@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Virtual Tour Builder</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark"></div>
+      <div class="brand-text">
+        <div class="title">Virtual Tour Builder</div>
+        <div class="subtitle">Editor</div>
+      </div>
+    </div>
+    <div class="top-actions">
+      <button class="btn ghost" id="btn-import">Import Project</button>
+      <button class="btn ghost" id="btn-save">Save Draft</button>
+      <button class="btn ghost" id="btn-export">Export Project JSON</button>
+      <button class="btn primary" id="btn-export-static">Export Static Package</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <aside class="panel left">
+      <section class="panel-section">
+        <div class="section-title">Project</div>
+        <div class="field">
+          <label>Name</label>
+          <input type="text" id="project-name" value="Sample Tour">
+        </div>
+        <div class="field">
+          <label>Default FOV</label>
+          <input type="number" id="project-fov" value="1.4" step="0.1">
+        </div>
+      </section>
+
+      <section class="panel-section">
+        <div class="section-title">Groups</div>
+        <div class="inline-actions">
+          <button class="btn" id="btn-add-group">Create</button>
+          <button class="btn ghost" id="btn-rename-group">Rename</button>
+          <button class="btn ghost" id="btn-delete-group">Delete</button>
+        </div>
+      </section>
+
+      <section class="panel-section">
+        <div class="section-title">Scenes</div>
+        <div class="field">
+          <label>Active Group</label>
+          <select id="scene-group"></select>
+        </div>
+        <div class="list" id="scene-list"></div>
+        <div class="inline-actions">
+          <button class="btn ghost" id="btn-set-main-scene">Set Main Scene</button>
+        </div>
+        <div class="inline-actions">
+          <button class="btn" id="btn-upload-panorama">Upload Images</button>
+          <button class="btn ghost" id="btn-delete-all-scenes">Delete All Images</button>
+          <button class="btn ghost" id="btn-generate-tiles">Generate Tiles</button>
+          <button class="btn ghost" id="btn-generate-all-tiles">Generate All Tiles</button>
+          <button class="btn ghost" id="btn-cancel-tiles">Cancel</button>
+          <button class="btn ghost" id="btn-pause-tiles">Pause</button>
+          <button class="btn ghost" id="btn-resume-tiles">Resume</button>
+        </div>
+        <div class="progress-wrap" id="tiling-progress">
+          <div class="progress-label">Tiling progress</div>
+          <div class="progress-bar">
+            <div class="progress-fill" id="tiling-progress-fill"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel-section">
+        <div class="section-title">Floorplans</div>
+        <div class="mini-map" id="mini-map">
+          <div class="mini-map-placeholder">No floorplan yet</div>
+        </div>
+        <div class="floorplan-hint">Click to place the current scene. Drag to move. Mouse wheel rotates.</div>
+        <div class="list" id="floorplan-list"></div>
+        <div class="inline-actions">
+          <button class="btn" id="btn-upload-minimap">Upload Floorplan</button>
+          <button class="btn ghost" id="btn-delete-floorplan">Delete</button>
+        </div>
+      </section>
+    </aside>
+
+    <section class="viewer">
+      <div class="viewer-top">
+        <div class="scene-title" id="scene-title">Scene: Entrance</div>
+        <div class="viewer-actions">
+          <button class="btn ghost" id="btn-gyro">Enable Gyro</button>
+          <button class="btn ghost" id="btn-vr">Enter VR</button>
+        </div>
+      </div>
+      <div class="viewer-canvas" id="viewer-canvas">
+        <div id="pano-editor"></div>
+        <div class="hotspot-overlay" id="hotspot-overlay"></div>
+        <div class="hotspot-hover-card" id="hotspot-hover-card" aria-hidden="true"></div>
+        <div class="viewer-placeholder" id="viewer-placeholder">Upload a 360 image and generate tiles.</div>
+      </div>
+      <div class="viewer-footer">
+        <div class="hint">Touch drag works as fallback. Gyro is manual toggle.</div>
+      </div>
+    </section>
+
+    <aside class="panel right">
+      <section class="panel-section">
+        <div class="section-title">Links</div>
+        <div class="inline-actions">
+          <button class="btn" id="btn-add-scene-link">Add Link</button>
+          <button class="btn ghost" id="btn-remove-all-links">Remove All Links</button>
+        </div>
+        <div class="field">
+          <label>Current Scene Links</label>
+          <select id="link-select"></select>
+        </div>
+        <div class="field">
+          <label>Link</label>
+          <input type="text" id="hotspot-title" value="" readonly>
+        </div>
+        <div class="field">
+          <label>Target Scene</label>
+          <select id="link-target-scene"></select>
+        </div>
+        <div class="field">
+          <label>Comment (optional)</label>
+          <textarea id="link-comment" rows="2"></textarea>
+        </div>
+        <div class="inline-actions">
+          <button class="btn ghost" id="btn-toggle-placement">Edit</button>
+          <button class="btn ghost" id="btn-delete-scene-link">Delete</button>
+        </div>
+      </section>
+
+      <section class="panel-section">
+        <div class="section-title">Hotspots</div>
+        <div class="inline-actions">
+          <button class="btn" id="btn-add-hotspot">Add Hotspot</button>
+          <button class="btn ghost" id="btn-delete-hotspot">Delete</button>
+        </div>
+        <div class="inline-actions">
+          <button class="btn ghost" id="btn-preview-hotspot">Preview Hotspot</button>
+        </div>
+        <div class="panel-hint">Generic hotspot tools.</div>
+      </section>
+
+      <section class="panel-section">
+        <div class="section-title">Hotspot Content</div>
+        <div class="content-blocks" id="content-blocks"></div>
+        <div class="inline-actions">
+          <button class="btn" id="btn-add-block">Add Block</button>
+        </div>
+      </section>
+
+      <section class="panel-section">
+        <div class="section-title">Icon</div>
+        <div class="field">
+          <label>Icon</label>
+          <select id="icon-select"></select>
+        </div>
+        <button class="btn" id="btn-upload-icon">Upload Custom Icon</button>
+      </section>
+
+      <section class="panel-section">
+        <div class="section-title">Media Library</div>
+        <div class="list" id="media-list"></div>
+        <div class="inline-actions">
+          <button class="btn" id="btn-upload-media">Upload Media</button>
+        </div>
+      </section>
+    </aside>
+  </main>
+
+  <footer class="statusbar">
+    <div class="status" id="status-left">Draft: autosave enabled (IndexedDB)</div>
+    <div class="status" id="status-right">Export format: JSON project file</div>
+  </footer>
+
+  <div class="hotspot-modal" id="hotspot-preview-modal" aria-hidden="true">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-title" id="preview-modal-title">Hotspot</div>
+        <button class="btn ghost" id="btn-close-preview">Close</button>
+      </div>
+      <div class="modal-body" id="preview-modal-body"></div>
+    </div>
+  </div>
+
+
+  <input type="file" id="file-import" accept="application/json" hidden>
+  <input type="file" id="file-icon" accept="image/*,.svg" hidden>
+  <input type="file" id="file-media" accept="image/*,audio/*,video/*" hidden>
+  <input type="file" id="file-floorplan" accept="image/*" hidden>
+  <input type="file" id="file-panorama" accept="image/*" multiple hidden>
+
+  <script src="vendor/jszip.min.js"></script>
+  <script src="../viewer/vendor/marzipano.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

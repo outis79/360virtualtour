@@ -1,0 +1,169 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Virtual Tour Project",
+  "type": "object",
+  "required": ["project", "settings", "scenes", "assets"],
+  "properties": {
+    "project": {
+      "type": "object",
+      "required": ["name", "version", "createdAt", "updatedAt"],
+      "properties": {
+        "name": { "type": "string" },
+        "version": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "settings": {
+      "type": "object",
+      "properties": {
+        "mouseViewMode": { "type": "string", "enum": ["drag", "qtvr"] },
+        "autorotateEnabled": { "type": "boolean" },
+        "fullscreenButton": { "type": "boolean" },
+        "gyroEnabled": { "type": "boolean" },
+        "vrEnabled": { "type": "boolean" }
+      }
+    },
+    "scenes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "levels", "faceSize", "initialViewParameters", "hotspots"],
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "tilesPath": { "type": "string" },
+          "previewPath": { "type": "string" },
+          "levels": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["tileSize", "size"],
+              "properties": {
+                "tileSize": { "type": "number" },
+                "size": { "type": "number" },
+                "fallbackOnly": { "type": "boolean" }
+              }
+            }
+          },
+          "faceSize": { "type": "number" },
+          "initialViewParameters": {
+            "type": "object",
+            "required": ["yaw", "pitch", "fov"],
+            "properties": {
+              "yaw": { "type": "number" },
+              "pitch": { "type": "number" },
+              "fov": { "type": "number" }
+            }
+          },
+          "hotspots": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["id", "yaw", "pitch", "iconId", "title", "contentBlocks"],
+              "properties": {
+                "id": { "type": "string" },
+                "yaw": { "type": "number" },
+                "pitch": { "type": "number" },
+                "iconId": { "type": "string" },
+                "title": { "type": "string" },
+                "contentBlocks": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["type"],
+                    "properties": {
+                      "type": { "type": "string", "enum": ["text", "image", "video", "audio", "link"] },
+                      "value": { "type": "string" },
+                      "assetId": { "type": "string" },
+                      "url": { "type": "string" },
+                      "label": { "type": "string" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "assets": {
+      "type": "object",
+      "properties": {
+        "icons": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id"],
+            "properties": {
+              "id": { "type": "string" },
+              "path": { "type": "string" },
+              "dataUrl": { "type": "string" },
+              "name": { "type": "string" }
+            }
+          }
+        },
+        "media": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "type"],
+            "properties": {
+              "id": { "type": "string" },
+              "type": { "type": "string", "enum": ["image", "video", "audio"] },
+              "path": { "type": "string" },
+              "dataUrl": { "type": "string" },
+              "name": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "minimap": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "image": { "type": "string" },
+        "nodes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["sceneId", "x", "y"],
+            "properties": {
+              "sceneId": { "type": "string" },
+              "x": { "type": "number" },
+              "y": { "type": "number" },
+              "rotation": { "type": "number" }
+            }
+          }
+        },
+        "floorplans": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "name"],
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "dataUrl": { "type": "string" },
+              "path": { "type": "string" },
+              "nodes": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["sceneId", "x", "y"],
+                  "properties": {
+                    "sceneId": { "type": "string" },
+                    "x": { "type": "number" },
+                    "y": { "type": "number" },
+                    "rotation": { "type": "number" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,63 @@
+{
+  "project": {
+    "name": "Sample Tour",
+    "version": "1.0",
+    "createdAt": "2026-02-02T18:31:00Z",
+    "updatedAt": "2026-02-02T18:31:00Z"
+  },
+  "settings": {
+    "mouseViewMode": "drag",
+    "autorotateEnabled": false,
+    "fullscreenButton": true,
+    "gyroEnabled": false,
+    "vrEnabled": true
+  },
+  "scenes": [
+    {
+      "id": "scene-entrance",
+      "name": "Entrance",
+      "tilesPath": "tiles/scene-entrance",
+      "previewPath": "tiles/scene-entrance/preview.jpg",
+      "levels": [
+        { "tileSize": 256, "size": 256, "fallbackOnly": true },
+        { "tileSize": 512, "size": 512 },
+        { "tileSize": 512, "size": 1024 },
+        { "tileSize": 512, "size": 2048 },
+        { "tileSize": 512, "size": 4096 },
+        { "tileSize": 512, "size": 8192 }
+      ],
+      "faceSize": 8192,
+      "initialViewParameters": { "yaw": 0, "pitch": 0, "fov": 1.4 },
+      "hotspots": [
+        {
+          "id": "hs-altar",
+          "yaw": 1.2,
+          "pitch": -0.1,
+          "iconId": "info",
+          "title": "Main Altar",
+          "contentBlocks": [
+            { "type": "text", "value": "Short description." },
+            { "type": "image", "assetId": "img-altar" },
+            { "type": "video", "url": "https://www.youtube.com/embed/dQw4w9WgXcQ" },
+            { "type": "audio", "assetId": "aud-narration" },
+            { "type": "link", "label": "Read more", "url": "https://example.com" }
+          ]
+        }
+      ]
+    }
+  ],
+  "assets": {
+    "icons": [
+      { "id": "info", "path": "icons/info.svg" }
+    ],
+    "media": [
+      { "id": "img-altar", "type": "image", "path": "media/altar.jpg" },
+      { "id": "aud-narration", "type": "audio", "path": "media/narration.mp3" }
+    ]
+  },
+  "minimap": {
+    "enabled": false,
+    "image": "minimap/floorplan.png",
+    "nodes": []
+  }
+}

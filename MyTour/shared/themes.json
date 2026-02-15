@@ -1,0 +1,23 @@
+{
+  "default-dark": {
+    "editor": {
+      "--bg": "#0e1116",
+      "--panel": "#141a22",
+      "--panel-2": "#19212c",
+      "--accent": "#f0c84b",
+      "--text": "#e6eef7",
+      "--muted": "#9aa6b2",
+      "--danger": "#ff6b6b",
+      "--outline": "rgba(255, 255, 255, 0.08)"
+    },
+    "viewer": {
+      "--bg": "#0b0f14",
+      "--panel": "#141a22",
+      "--panel-2": "#1b2330",
+      "--accent": "#f0c84b",
+      "--text": "#e6eef7",
+      "--muted": "#9aa6b2",
+      "--outline": "rgba(255, 255, 255, 0.08)"
+    }
+  }
+}
