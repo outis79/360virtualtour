@@ -37,9 +37,14 @@ const panoLeft = document.getElementById('pano-left');
 const panoRight = document.getElementById('pano-right');
 const sceneList = document.getElementById('scene-list');
 const groupSelect = document.getElementById('group-select');
+const floorplanStage = document.getElementById('floorplan-stage');
 const floorplanImage = document.getElementById('floorplan-image');
 const floorplanMarkers = document.getElementById('floorplan-markers');
 const floorplanEmpty = document.getElementById('floorplan-empty');
+const btnFloorplanZoomOut = document.getElementById('btn-floorplan-zoom-out');
+const btnFloorplanZoomIn = document.getElementById('btn-floorplan-zoom-in');
+const btnFloorplanZoomReset = document.getElementById('btn-floorplan-zoom-reset');
+const floorplanZoomValue = document.getElementById('floorplan-zoom-value');
 const modal = document.getElementById('hotspot-modal');
 const modalTitle = document.getElementById('modal-title');
 const modalBody = document.getElementById('modal-body');
@@ -59,6 +64,15 @@ let gyroFallbackZeroAlpha = null;
 let projectData = null;
 let activeGroupId = null;
 let floorplansByGroup = new Map();
+let floorplanZoomByGroup = new Map();
+
+const FLOORPLAN_COLOR_MAP = {
+  yellow: '#f0c84b',
+  red: '#ef4444',
+  cyan: '#22d3ee',
+  lightgreen: '#86efac',
+  magenta: '#f472b6'
+};
 
 function openModal(hotspot) {
   modalTitle.textContent = hotspot.title || 'Hotspot';
@@ -123,7 +137,9 @@ function openModal(hotspot) {
       if (target) {
         const button = document.createElement('button');
         button.className = 'btn';
-        button.textContent = `Go to ${target.data.name || 'scene'}`;
+        const targetAlias = String(target.data?.alias || '').trim();
+        const targetName = targetAlias || target.data.name || 'scene';
+        button.textContent = `Go to ${targetName}`;
         button.addEventListener('click', () => {
           closeModal();
           switchScene(target, { syncGroup: true });
@@ -179,9 +195,21 @@ function normalizeProject(rawProject) {
     if (!scene.groupId || !validGroupIds.has(scene.groupId)) {
       scene.groupId = firstGroupId;
     }
+    scene.alias = typeof scene.alias === 'string' ? scene.alias : '';
     if (!Array.isArray(scene.hotspots)) {
       scene.hotspots = [];
     }
+    scene.hotspots.forEach((hotspot) => {
+      const blocks = Array.isArray(hotspot?.contentBlocks) ? hotspot.contentBlocks : [];
+      blocks.forEach((block) => {
+        if (block?.type === 'scene') {
+          block.comment = typeof block.comment === 'string' ? block.comment : '';
+          if (Object.prototype.hasOwnProperty.call(block, 'alias')) {
+            delete block.alias;
+          }
+        }
+      });
+    });
   });
 
   const minimap = project.minimap && typeof project.minimap === 'object' ? project.minimap : {};
@@ -194,15 +222,18 @@ function normalizeProject(rawProject) {
     ))
     .map((floorplan) => {
       const nodes = Array.isArray(floorplan.nodes) ? floorplan.nodes : [];
+      const fallbackColorKey = normalizeFloorplanColorKey(floorplan.markerColorKey || 'yellow');
       return {
         ...floorplan,
+        markerColorKey: fallbackColorKey,
         nodes: nodes
           .filter((node) => node?.sceneId && Number.isFinite(node.x) && Number.isFinite(node.y))
           .map((node) => ({
             sceneId: node.sceneId,
             x: Math.min(Math.max(node.x, 0), 1),
             y: Math.min(Math.max(node.y, 0), 1),
-            rotation: Number.isFinite(node.rotation) ? node.rotation : 0
+            rotation: Number.isFinite(node.rotation) ? node.rotation : 0,
+            colorKey: normalizeFloorplanColorKey(node.colorKey || fallbackColorKey)
           }))
       };
     });
@@ -251,6 +282,7 @@ function buildViewer(project) {
   });
   activeViewer = viewer;
   floorplansByGroup = new Map();
+  floorplanZoomByGroup = new Map();
   (project.minimap?.floorplans || []).forEach((floorplan) => {
     if (!floorplansByGroup.has(floorplan.groupId) && floorplan.path) {
       floorplansByGroup.set(floorplan.groupId, floorplan);
@@ -283,7 +315,7 @@ function buildViewer(project) {
 
   renderGroupList();
   renderFloorplan();
-  const firstScene = scenes.find((scene) => scene.data.groupId === activeGroupId) || scenes[0];
+  const firstScene = getPreferredSceneForGroup(activeGroupId) || scenes[0];
   if (firstScene) {
     switchScene(firstScene, { syncGroup: true });
   } else {
@@ -377,21 +409,34 @@ function createHotspotElement(hotspot) {
   const wrapper = document.createElement('div');
   wrapper.className = 'hotspot';
   wrapper.setAttribute('aria-label', hotspot.title || 'Hotspot');
+  const isSceneLink = Boolean((hotspot.contentBlocks || []).some((block) => block.type === 'scene'));
+  if (isSceneLink) {
+    wrapper.classList.add('hotspot-link', 'hotspot-default');
+    const linkColor = FLOORPLAN_COLOR_MAP[normalizeFloorplanColorKey(hotspot.linkColorKey || 'yellow')];
+    wrapper.style.setProperty('--scene-link-color', linkColor);
+    wrapper.style.setProperty('--scene-link-border', darkenHex(linkColor, 0.24));
+    wrapper.style.setProperty('--scene-link-ring', withAlpha(linkColor, 0.35));
+  }
 
-  if (hotspot.iconPath) {
+  const applyDefaultStyle = () => {
+    wrapper.classList.add('hotspot-default');
+    if (isSceneLink) {
+      wrapper.classList.add('hotspot-link');
+    }
+  };
+
+  if (!isSceneLink && hotspot.iconPath) {
     const img = document.createElement('img');
     img.src = hotspot.iconPath;
     img.alt = '';
     img.className = 'hotspot-icon';
     img.addEventListener('error', () => {
       img.remove();
-      wrapper.classList.add('hotspot-default');
-      wrapper.textContent = 'i';
+      applyDefaultStyle();
     });
     wrapper.appendChild(img);
   } else {
-    wrapper.classList.add('hotspot-default');
-    wrapper.textContent = 'i';
+    applyDefaultStyle();
   }
 
   wrapper.addEventListener('click', () => {
@@ -430,8 +475,78 @@ function getActiveFloorplan() {
   return floorplansByGroup.get(activeGroupId) || null;
 }
 
+function normalizeFloorplanColorKey(key) {
+  return Object.prototype.hasOwnProperty.call(FLOORPLAN_COLOR_MAP, key) ? key : 'yellow';
+}
+
+function hexToRgb(hex) {
+  const clean = String(hex || '').replace('#', '');
+  const value = clean.length === 3
+    ? clean.split('').map((c) => c + c).join('')
+    : clean;
+  if (!/^[0-9a-f]{6}$/i.test(value)) return { r: 240, g: 200, b: 75 };
+  return {
+    r: Number.parseInt(value.slice(0, 2), 16),
+    g: Number.parseInt(value.slice(2, 4), 16),
+    b: Number.parseInt(value.slice(4, 6), 16)
+  };
+}
+
+function rgbToHex(r, g, b) {
+  const clamp = (v) => Math.max(0, Math.min(255, Math.round(v)));
+  return `#${clamp(r).toString(16).padStart(2, '0')}${clamp(g).toString(16).padStart(2, '0')}${clamp(b).toString(16).padStart(2, '0')}`;
+}
+
+function darkenHex(hex, ratio = 0.24) {
+  const rgb = hexToRgb(hex);
+  const k = Math.max(0, Math.min(1, 1 - ratio));
+  return rgbToHex(rgb.r * k, rgb.g * k, rgb.b * k);
+}
+
+function withAlpha(hex, alpha = 0.35) {
+  const rgb = hexToRgb(hex);
+  const a = Math.max(0, Math.min(1, alpha));
+  return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${a})`;
+}
+
+function getActiveFloorplanZoom() {
+  if (!activeGroupId) return 1;
+  const value = floorplanZoomByGroup.get(activeGroupId);
+  return Number.isFinite(value) ? value : 1;
+}
+
+function updateFloorplanZoomLabel() {
+  if (!floorplanZoomValue) return;
+  floorplanZoomValue.textContent = `${Math.round(getActiveFloorplanZoom() * 100)}%`;
+}
+
+function applyFloorplanZoom() {
+  if (!floorplanStage) return;
+  floorplanStage.style.setProperty('--floorplan-zoom', String(getActiveFloorplanZoom()));
+  updateFloorplanZoomLabel();
+}
+
+function setActiveFloorplanZoom(nextZoom) {
+  if (!activeGroupId) return;
+  const clamped = Math.min(4, Math.max(0.5, nextZoom));
+  floorplanZoomByGroup.set(activeGroupId, clamped);
+  applyFloorplanZoom();
+}
+
 function findSceneRuntimeById(sceneId) {
   return scenes.find((scene) => scene.data.id === sceneId) || null;
+}
+
+function getGroupById(groupId) {
+  return (projectData?.groups || []).find((group) => group.id === groupId) || null;
+}
+
+function getPreferredSceneForGroup(groupId) {
+  const groupScenes = scenes.filter((scene) => scene.data.groupId === groupId);
+  if (!groupScenes.length) return null;
+  const group = getGroupById(groupId);
+  const preferred = groupScenes.find((scene) => scene.data.id === group?.mainSceneId);
+  return preferred || groupScenes[0];
 }
 
 function renderFloorplanMarkers() {
@@ -439,6 +554,7 @@ function renderFloorplanMarkers() {
   floorplanMarkers.innerHTML = '';
 
   const floorplan = getActiveFloorplan();
+  const fallbackColorKey = normalizeFloorplanColorKey(floorplan?.markerColorKey || 'yellow');
   const nodes = floorplan?.nodes || [];
   if (!nodes.length) {
     floorplanMarkers.classList.add('hidden');
@@ -460,6 +576,12 @@ function renderFloorplanMarkers() {
     marker.style.left = `${node.x * 100}%`;
     marker.style.top = `${node.y * 100}%`;
     marker.title = targetScene.data.name || 'Scene';
+    const markerColor = FLOORPLAN_COLOR_MAP[normalizeFloorplanColorKey(node.colorKey || fallbackColorKey)];
+    const markerBorder = darkenHex(markerColor, 0.24);
+    const markerRing = withAlpha(markerColor, 0.35);
+    marker.style.setProperty('--floorplan-marker-color', markerColor);
+    marker.style.setProperty('--floorplan-marker-border', markerBorder);
+    marker.style.setProperty('--floorplan-marker-ring', markerRing);
     marker.addEventListener('click', () => switchScene(targetScene, { syncGroup: false }));
     floorplanMarkers.appendChild(marker);
   });
@@ -472,21 +594,32 @@ function renderFloorplanMarkers() {
 }
 
 function renderFloorplan() {
-  if (!floorplanImage || !floorplanEmpty || !floorplanMarkers) return;
+  if (!floorplanImage || !floorplanEmpty || !floorplanMarkers || !floorplanStage) return;
   const floorplan = getActiveFloorplan();
   const floorplanPath = floorplan?.path || '';
+  const setZoomButtonsState = (disabled) => {
+    if (btnFloorplanZoomOut) btnFloorplanZoomOut.disabled = disabled;
+    if (btnFloorplanZoomIn) btnFloorplanZoomIn.disabled = disabled;
+    if (btnFloorplanZoomReset) btnFloorplanZoomReset.disabled = disabled;
+  };
   if (!floorplanPath) {
+    setZoomButtonsState(true);
+    floorplanStage.classList.add('hidden');
     floorplanImage.classList.add('hidden');
     floorplanImage.removeAttribute('src');
     floorplanMarkers.classList.add('hidden');
     floorplanMarkers.innerHTML = '';
-    floorplanEmpty.classList.remove('hidden');
+    floorplanEmpty.classList.add('hidden');
+    updateFloorplanZoomLabel();
     return;
   }
 
+  setZoomButtonsState(false);
+  floorplanStage.classList.remove('hidden');
   floorplanImage.src = floorplanPath;
   floorplanImage.classList.remove('hidden');
   floorplanEmpty.classList.add('hidden');
+  applyFloorplanZoom();
   renderFloorplanMarkers();
 }
 
@@ -715,10 +848,19 @@ fetch(sampleTourUrl)
 btnGyro.addEventListener('click', toggleGyro);
 btnReset.addEventListener('click', resetOrientation);
 btnVr.addEventListener('click', enterVr);
+btnFloorplanZoomOut?.addEventListener('click', () => {
+  setActiveFloorplanZoom(getActiveFloorplanZoom() - 0.1);
+});
+btnFloorplanZoomIn?.addEventListener('click', () => {
+  setActiveFloorplanZoom(getActiveFloorplanZoom() + 0.1);
+});
+btnFloorplanZoomReset?.addEventListener('click', () => {
+  setActiveFloorplanZoom(1);
+});
 groupSelect?.addEventListener('change', () => {
   activeGroupId = groupSelect.value;
   renderFloorplan();
-  const firstSceneInGroup = scenes.find((scene) => scene.data.groupId === activeGroupId);
+  const firstSceneInGroup = getPreferredSceneForGroup(activeGroupId);
   if (firstSceneInGroup) {
     switchScene(firstSceneInGroup, { syncGroup: false });
   } else {

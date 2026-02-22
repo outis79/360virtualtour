@@ -26,65 +26,63 @@
   <main class="layout">
     <aside class="panel left">
       <section class="panel-section">
-        <div class="section-title">Project</div>
-        <div class="field">
-          <label>Name</label>
-          <input type="text" id="project-name" value="Sample Tour">
+        <div class="section-head">
+          <div class="section-title">Project</div>
+          <button class="btn ghost section-toggle-btn" id="btn-toggle-project-panel">Hide</button>
         </div>
-        <div class="field">
-          <label>Default FOV</label>
-          <input type="number" id="project-fov" value="1.4" step="0.1">
-        </div>
-      </section>
-
-      <section class="panel-section">
-        <div class="section-title">Groups</div>
-        <div class="inline-actions">
-          <button class="btn" id="btn-add-group">Create</button>
-          <button class="btn ghost" id="btn-rename-group">Rename</button>
-          <button class="btn ghost" id="btn-delete-group">Delete</button>
-        </div>
-      </section>
-
-      <section class="panel-section">
-        <div class="section-title">Scenes</div>
-        <div class="field">
-          <label>Active Group</label>
-          <select id="scene-group"></select>
-        </div>
-        <div class="list" id="scene-list"></div>
-        <div class="inline-actions">
-          <button class="btn ghost" id="btn-set-main-scene">Set Main Scene</button>
-        </div>
-        <div class="inline-actions">
-          <button class="btn" id="btn-upload-panorama">Upload Images</button>
-          <button class="btn ghost" id="btn-delete-all-scenes">Delete All Images</button>
-          <button class="btn ghost" id="btn-generate-tiles">Generate Tiles</button>
-          <button class="btn ghost" id="btn-generate-all-tiles">Generate All Tiles</button>
-          <button class="btn ghost" id="btn-cancel-tiles">Cancel</button>
-          <button class="btn ghost" id="btn-pause-tiles">Pause</button>
-          <button class="btn ghost" id="btn-resume-tiles">Resume</button>
-        </div>
-        <div class="progress-wrap" id="tiling-progress">
-          <div class="progress-label">Tiling progress</div>
-          <div class="progress-bar">
-            <div class="progress-fill" id="tiling-progress-fill"></div>
+        <div class="section-body" id="project-panel-body">
+          <div class="field">
+            <label>Name</label>
+            <input type="text" id="project-name" value="Sample Tour">
+          </div>
+          <div class="inline-actions">
+            <button class="btn ghost" id="btn-reset-project">Reset Project</button>
           </div>
         </div>
       </section>
 
       <section class="panel-section">
-        <div class="section-title">Floorplans</div>
-        <div class="mini-map" id="mini-map">
-          <div class="mini-map-placeholder">No floorplan yet</div>
+        <div class="section-head">
+          <div class="section-title">Groups</div>
+          <button class="btn ghost section-toggle-btn" id="btn-toggle-groups-panel">Hide</button>
         </div>
-        <div class="floorplan-hint">Click to place the current scene. Drag to move. Mouse wheel rotates.</div>
-        <div class="list" id="floorplan-list"></div>
-        <div class="inline-actions">
-          <button class="btn" id="btn-upload-minimap">Upload Floorplan</button>
-          <button class="btn ghost" id="btn-delete-floorplan">Delete</button>
+        <div class="section-body" id="groups-panel-body">
+          <div class="field">
+            <select id="group-select"></select>
+          </div>
+          <div class="inline-actions">
+            <button class="btn" id="btn-add-group">Create</button>
+            <button class="btn ghost" id="btn-rename-group">Rename</button>
+            <button class="btn ghost" id="btn-delete-group">Delete Group</button>
+          </div>
+          <div class="inline-actions">
+            <button class="btn" id="btn-upload-panorama">Upload Img</button>
+            <button class="btn ghost" id="btn-delete-all-scenes">Delete All Img</button>
+          </div>
         </div>
       </section>
+
+      <section class="panel-section">
+        <div class="section-head">
+          <div class="section-title">Scenes</div>
+          <button class="btn ghost section-toggle-btn" id="btn-toggle-scenes-panel">Hide</button>
+        </div>
+        <div class="section-body" id="scenes-panel-body">
+          <div class="inline-actions scene-sort-actions">
+            <button class="btn ghost" id="btn-scene-sort-name">A/Z</button>
+            <button class="btn ghost" id="btn-scene-sort-upload">UPLOAD</button>
+            <button class="btn ghost" id="btn-scene-label-mode">Alias OFF</button>
+          </div>
+          <div class="list" id="scene-list"></div>
+          <div class="progress-wrap" id="tiling-progress">
+            <div class="progress-label">Tiling progress</div>
+            <div class="progress-bar">
+              <div class="progress-fill" id="tiling-progress-fill"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
     </aside>
 
     <section class="viewer">
@@ -108,30 +106,93 @@
 
     <aside class="panel right">
       <section class="panel-section">
-        <div class="section-title">Links</div>
-        <div class="inline-actions">
-          <button class="btn" id="btn-add-scene-link">Add Link</button>
-          <button class="btn ghost" id="btn-remove-all-links">Remove All Links</button>
+        <div class="section-head">
+          <div class="section-title">Scene Actions</div>
+          <button class="btn ghost section-toggle-btn" id="btn-toggle-scene-actions-panel">Hide</button>
         </div>
-        <div class="field">
-          <label>Current Scene Links</label>
-          <select id="link-select"></select>
+        <div class="section-body" id="scene-actions-panel-body">
+          <div class="inline-actions">
+            <button class="btn ghost" id="btn-set-main-scene">Set Main Scene</button>
+            <button class="btn ghost" id="btn-set-orientation">Set Orientation</button>
+          </div>
+          <div class="inline-actions">
+            <button class="btn ghost" id="btn-delete-selected-scenes">Delete Scene(s)</button>
+          </div>
+          <div class="field">
+            <label>Comment (optional)</label>
+            <textarea id="scene-comment" rows="2"></textarea>
+          </div>
+          <div class="inline-actions">
+            <button class="btn ghost" id="btn-tiles-info">Info</button>
+            <button class="btn ghost" id="btn-generate-tiles">Generate Tiles</button>
+          </div>
+          <div class="inline-actions">
+            <button class="btn ghost" id="btn-pause-tiles">Pause</button>
+            <button class="btn ghost" id="btn-resume-tiles">Resume</button>
+            <button class="btn ghost" id="btn-cancel-tiles">Cancel</button>
+          </div>
         </div>
-        <div class="field">
-          <label>Link</label>
-          <input type="text" id="hotspot-title" value="" readonly>
+      </section>
+
+      <section class="panel-section">
+        <div class="section-head">
+          <div class="section-title">Map</div>
+          <button class="btn ghost section-toggle-btn" id="btn-toggle-map-panel">Hide</button>
         </div>
-        <div class="field">
-          <label>Target Scene</label>
-          <select id="link-target-scene"></select>
+        <div class="section-body" id="map-panel-body">
+          <div class="inline-actions">
+            <button class="btn" id="btn-upload-minimap">Upload Map</button>
+            <button class="btn ghost" id="btn-delete-floorplan">Delete Map</button>
+          </div>
+          <div class="mini-map" id="mini-map">
+            <div class="mini-map-placeholder"></div>
+          </div>
+          <div class="inline-actions map-top-actions">
+            <button class="btn ghost" id="btn-floorplan-expand">Maximise</button>
+            <button class="btn ghost" id="btn-floorplan-zoom-reset">Reset</button>
+            <button class="btn ghost" id="btn-floorplan-toggle-labels">Names OFF</button>
+          </div>
+          <div class="inline-actions">
+            <button class="btn ghost" id="btn-floorplan-place-scene">Place</button>
+            <select id="floorplan-color-select" class="field-select floorplan-color-select" aria-label="Map color"></select>
+            <button class="btn ghost" id="btn-floorplan-edit">Edit</button>
+            <button class="btn ghost" id="btn-floorplan-delete-node">Delete</button>
+            <button class="btn ghost" id="btn-floorplan-select-all">Select All</button>
+          </div>
         </div>
-        <div class="field">
-          <label>Comment (optional)</label>
-          <textarea id="link-comment" rows="2"></textarea>
+      </section>
+
+      <section class="panel-section">
+        <div class="section-head">
+          <div class="section-title">Scene Links</div>
+          <button class="btn ghost section-toggle-btn" id="btn-toggle-links-panel">Hide</button>
         </div>
-        <div class="inline-actions">
-          <button class="btn ghost" id="btn-toggle-placement">Edit</button>
-          <button class="btn ghost" id="btn-delete-scene-link">Delete</button>
+        <div class="section-body" id="links-panel-body">
+          <div class="field">
+            <label>Links</label>
+            <select id="link-select"></select>
+          </div>
+          <div class="inline-actions links-top-actions">
+            <button class="btn" id="btn-add-scene-link">New</button>
+            <button class="btn ghost" id="btn-toggle-placement">Edit</button>
+            <button class="btn ghost" id="btn-delete-scene-link">Delete</button>
+            <select id="link-new-color" class="field-select compact-select" aria-label="New link color"></select>
+          </div>
+          <div class="field">
+            <label>Target Scene</label>
+            <label class="inline-flag">
+              <input type="checkbox" id="link-target-all-groups">
+              <span>All groups</span>
+            </label>
+            <select id="link-target-scene"></select>
+          </div>
+          <div class="field">
+            <label id="link-note-label">Comment (optional)</label>
+            <textarea id="link-comment" rows="2"></textarea>
+          </div>
+          <div class="inline-actions">
+            <button class="btn ghost" id="btn-remove-all-links">Delete All</button>
+          </div>
         </div>
       </section>
 
@@ -179,6 +240,8 @@
     <div class="status" id="status-right">Export format: JSON project file</div>
   </footer>
 
+  <div class="map-window-backdrop" id="map-window-backdrop" aria-hidden="true"></div>
+
   <div class="hotspot-modal" id="hotspot-preview-modal" aria-hidden="true">
     <div class="modal-content">
       <div class="modal-header">
@@ -186,6 +249,51 @@
         <button class="btn ghost" id="btn-close-preview">Close</button>
       </div>
       <div class="modal-body" id="preview-modal-body"></div>
+    </div>
+  </div>
+
+  <div class="hotspot-modal" id="delete-links-scope-modal" aria-hidden="true">
+    <div class="modal-content modal-content-compact">
+      <div class="modal-header">
+        <div class="modal-title">Delete All Links</div>
+      </div>
+      <div class="modal-body">
+        <div class="panel-hint">Choose where to delete links:</div>
+        <div class="confirm-modal-actions">
+          <button class="btn ghost" id="btn-delete-links-scene">Current Scene</button>
+          <button class="btn ghost" id="btn-delete-links-group">Current Group</button>
+          <button class="btn" id="btn-delete-links-cancel">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="hotspot-modal" id="duplicate-panorama-modal" aria-hidden="true">
+    <div class="modal-content modal-content-compact">
+      <div class="modal-header">
+        <div class="modal-title">Image Already Exists</div>
+      </div>
+      <div class="modal-body">
+        <div class="panel-hint duplicate-modal-message" id="duplicate-panorama-message"></div>
+        <div class="confirm-modal-actions">
+          <button class="btn ghost" id="btn-duplicate-panorama-proceed">Proceed</button>
+          <button class="btn ghost" id="btn-duplicate-panorama-accept-all">Accept All</button>
+          <button class="btn ghost" id="btn-duplicate-panorama-skip">Skip</button>
+          <button class="btn ghost" id="btn-duplicate-panorama-skip-all">Skip All</button>
+          <button class="btn ghost" id="btn-duplicate-panorama-list">List</button>
+          <button class="btn" id="btn-duplicate-panorama-cancel">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="hotspot-modal" id="duplicate-panorama-list-modal" aria-hidden="true">
+    <div class="modal-content modal-content-compact">
+      <div class="modal-header">
+        <div class="modal-title">Duplicate Images List</div>
+        <button class="btn ghost" id="btn-close-duplicate-panorama-list">Close</button>
+      </div>
+      <div class="modal-body" id="duplicate-panorama-list-body"></div>
     </div>
   </div>
 

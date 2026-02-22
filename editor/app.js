@@ -72,20 +72,28 @@ const state = {
   selectedGroupId: null,
   selectedSceneId: null,
   selectedHotspotId: null,
-  selectedFloorplanId: null
+  selectedFloorplanId: null,
+  multiSelectedSceneIds: [],
+  sceneSelectionAnchorId: null,
+  sceneSortKey: 'name',
+  sceneSortDirection: 'asc',
+  sceneLabelMode: 'name',
+  linkTargetAllGroups: false,
+  newLinkColorKey: 'yellow'
 };
 
 const sceneList = document.getElementById('scene-list');
-const sceneGroupSelect = document.getElementById('scene-group');
-const hotspotList = document.getElementById('hotspot-list');
+const sceneGroupSelect = document.getElementById('group-select');
 const linkSelect = document.getElementById('link-select');
 const linkTargetSceneSelect = document.getElementById('link-target-scene');
+const linkTargetAllGroupsToggle = document.getElementById('link-target-all-groups');
 const linkCommentInput = document.getElementById('link-comment');
+const linkNoteLabel = document.getElementById('link-note-label');
+const linkNewColorSelect = document.getElementById('link-new-color');
 const contentBlocks = document.getElementById('content-blocks');
 const sceneTitle = document.getElementById('scene-title');
 const projectNameInput = document.getElementById('project-name');
-const projectFovInput = document.getElementById('project-fov');
-const hotspotTitleInput = document.getElementById('hotspot-title');
+const projectFovInput = null;
 const statusLeft = document.getElementById('status-left');
 const btnAddGroup = document.getElementById('btn-add-group');
 const btnRenameGroup = document.getElementById('btn-rename-group');
@@ -94,22 +102,42 @@ const btnImport = document.getElementById('btn-import');
 const btnSave = document.getElementById('btn-save');
 const btnExport = document.getElementById('btn-export');
 const btnExportStatic = document.getElementById('btn-export-static');
+const btnResetProject = document.getElementById('btn-reset-project');
 const btnUploadIcon = document.getElementById('btn-upload-icon');
 const btnUploadMedia = document.getElementById('btn-upload-media');
 const btnUploadFloorplan = document.getElementById('btn-upload-minimap');
 const btnDeleteFloorplan = document.getElementById('btn-delete-floorplan');
 const btnUploadPanorama = document.getElementById('btn-upload-panorama');
 const btnGenerateTiles = document.getElementById('btn-generate-tiles');
-const btnGenerateAllTiles = document.getElementById('btn-generate-all-tiles');
+const btnTilesInfo = document.getElementById('btn-tiles-info');
+const btnDeleteSelectedScenes = document.getElementById('btn-delete-selected-scenes');
 const btnCancelTiles = document.getElementById('btn-cancel-tiles');
 const btnPauseTiles = document.getElementById('btn-pause-tiles');
 const btnResumeTiles = document.getElementById('btn-resume-tiles');
 const btnTogglePlacement = document.getElementById('btn-toggle-placement');
 const btnPreviewHotspot = document.getElementById('btn-preview-hotspot');
 const btnSetMainScene = document.getElementById('btn-set-main-scene');
+const btnSetOrientation = document.getElementById('btn-set-orientation');
 const btnAddSceneLink = document.getElementById('btn-add-scene-link');
 const btnDeleteSceneLink = document.getElementById('btn-delete-scene-link');
 const btnRemoveAllLinks = document.getElementById('btn-remove-all-links');
+const btnToggleLinksPanel = document.getElementById('btn-toggle-links-panel');
+const linksPanelBody = document.getElementById('links-panel-body');
+const btnToggleProjectPanel = document.getElementById('btn-toggle-project-panel');
+const projectPanelBody = document.getElementById('project-panel-body');
+const btnToggleGroupsPanel = document.getElementById('btn-toggle-groups-panel');
+const groupsPanelBody = document.getElementById('groups-panel-body');
+const btnToggleScenesPanel = document.getElementById('btn-toggle-scenes-panel');
+const scenesPanelBody = document.getElementById('scenes-panel-body');
+const btnSceneSortName = document.getElementById('btn-scene-sort-name');
+const btnSceneSortUpload = document.getElementById('btn-scene-sort-upload');
+const btnSceneLabelMode = document.getElementById('btn-scene-label-mode');
+const btnToggleMapPanel = document.getElementById('btn-toggle-map-panel');
+const mapPanelBody = document.getElementById('map-panel-body');
+const btnToggleSceneActionsPanel = document.getElementById('btn-toggle-scene-actions-panel');
+const sceneActionsPanelBody = document.getElementById('scene-actions-panel-body');
+const mapWindowBackdrop = document.getElementById('map-window-backdrop');
+const layoutRoot = document.querySelector('.layout');
 const fileImport = document.getElementById('file-import');
 const fileIcon = document.getElementById('file-icon');
 const fileMedia = document.getElementById('file-media');
@@ -117,8 +145,15 @@ const fileFloorplan = document.getElementById('file-floorplan');
 const filePanorama = document.getElementById('file-panorama');
 const iconSelect = document.getElementById('icon-select');
 const mediaList = document.getElementById('media-list');
-const floorplanList = document.getElementById('floorplan-list');
 const miniMap = document.getElementById('mini-map');
+const btnFloorplanExpand = document.getElementById('btn-floorplan-expand');
+const btnFloorplanPlaceScene = document.getElementById('btn-floorplan-place-scene');
+const btnFloorplanEdit = document.getElementById('btn-floorplan-edit');
+const btnFloorplanSelectAll = document.getElementById('btn-floorplan-select-all');
+const btnFloorplanDeleteNode = document.getElementById('btn-floorplan-delete-node');
+const btnFloorplanToggleLabels = document.getElementById('btn-floorplan-toggle-labels');
+const floorplanColorSelect = document.getElementById('floorplan-color-select');
+const btnFloorplanZoomReset = document.getElementById('btn-floorplan-zoom-reset');
 const tilingProgress = document.getElementById('tiling-progress');
 const tilingProgressFill = document.getElementById('tiling-progress-fill');
 const panoEditor = document.getElementById('pano-editor');
@@ -130,6 +165,22 @@ const previewModal = document.getElementById('hotspot-preview-modal');
 const previewModalTitle = document.getElementById('preview-modal-title');
 const previewModalBody = document.getElementById('preview-modal-body');
 const btnClosePreview = document.getElementById('btn-close-preview');
+const deleteLinksScopeModal = document.getElementById('delete-links-scope-modal');
+const btnDeleteLinksScene = document.getElementById('btn-delete-links-scene');
+const btnDeleteLinksGroup = document.getElementById('btn-delete-links-group');
+const btnDeleteLinksCancel = document.getElementById('btn-delete-links-cancel');
+const duplicatePanoramaModal = document.getElementById('duplicate-panorama-modal');
+const duplicatePanoramaMessage = document.getElementById('duplicate-panorama-message');
+const btnDuplicatePanoramaProceed = document.getElementById('btn-duplicate-panorama-proceed');
+const btnDuplicatePanoramaAcceptAll = document.getElementById('btn-duplicate-panorama-accept-all');
+const btnDuplicatePanoramaSkip = document.getElementById('btn-duplicate-panorama-skip');
+const btnDuplicatePanoramaSkipAll = document.getElementById('btn-duplicate-panorama-skip-all');
+const btnDuplicatePanoramaList = document.getElementById('btn-duplicate-panorama-list');
+const btnDuplicatePanoramaCancel = document.getElementById('btn-duplicate-panorama-cancel');
+const duplicatePanoramaListModal = document.getElementById('duplicate-panorama-list-modal');
+const duplicatePanoramaListBody = document.getElementById('duplicate-panorama-list-body');
+const btnCloseDuplicatePanoramaList = document.getElementById('btn-close-duplicate-panorama-list');
+const sceneCommentInput = document.getElementById('scene-comment');
 
 let dragState = null;
 const generatedTiles = new Map();
@@ -142,6 +193,9 @@ let editorScenes = new Map();
 let placementMode = false;
 let markerFrame = null;
 let markerLoopId = null;
+const hotspotMarkerElements = new Map();
+let hotspotMarkerSceneId = null;
+let lastMarkerRenderSignature = null;
 let suppressSceneSwitch = false;
 let draggingHotspotId = null;
 let dragMoved = false;
@@ -150,6 +204,25 @@ let viewerPointerDown = null;
 let suppressNextViewerClick = false;
 let renamingSceneId = null;
 let hoveredLinkHotspotId = null;
+let pendingSceneLinkDraft = null;
+let floorplanZoomByGroup = new Map();
+let floorplanPlaceMode = false;
+let floorplanEditMode = false;
+let floorplanSelectAllMode = false;
+let floorplanShowLabels = false;
+let floorplanMapWindowOpen = false;
+let floorplanPanState = null;
+let deleteLinksScopeResolver = null;
+let duplicatePanoramaResolver = null;
+let duplicatePanoramaListEntries = [];
+
+const FLOORPLAN_COLOR_MAP = {
+  yellow: '#f0c84b',
+  red: '#ef4444',
+  cyan: '#22d3ee',
+  lightgreen: '#86efac',
+  magenta: '#f472b6'
+};
 
 function updateStatus(message) {
   statusLeft.textContent = message;
@@ -218,6 +291,7 @@ const autosave = debounce(() => {
 }, 700);
 
 function loadProject(project) {
+  floorplanZoomByGroup = new Map();
   project.groups = project.groups || [{ id: 'group-main', name: 'Main Group' }];
   if (!project.groups.length) {
     project.groups.push({ id: `group-${Date.now()}`, name: 'Main Group' });
@@ -231,11 +305,30 @@ function loadProject(project) {
     if (!scene.groupId) {
       scene.groupId = defaultGroupId;
     }
+    scene.alias = typeof scene.alias === 'string' ? scene.alias : '';
+    scene.comment = typeof scene.comment === 'string' ? scene.comment : '';
+    scene.hotspots = scene.hotspots || [];
+    scene.hotspots.forEach((hotspot) => {
+      hotspot.contentBlocks = hotspot.contentBlocks || [];
+      hotspot.contentBlocks.forEach((block) => {
+        if (block.type === 'scene') {
+          block.comment = typeof block.comment === 'string' ? block.comment : '';
+          if (Object.prototype.hasOwnProperty.call(block, 'alias')) {
+            delete block.alias;
+          }
+        }
+      });
+    });
   });
   project.minimap.floorplans.forEach((floorplan) => {
     if (!floorplan.groupId) {
       floorplan.groupId = defaultGroupId;
     }
+    floorplan.markerColorKey = normalizeFloorplanColorKey(floorplan.markerColorKey || 'yellow');
+    floorplan.nodes = (floorplan.nodes || []).map((node) => ({
+      ...node,
+      colorKey: normalizeFloorplanColorKey(node?.colorKey || floorplan.markerColorKey || 'yellow')
+    }));
   });
   project.groups.forEach((group) => {
     const groupScenes = project.scenes.filter((scene) => scene.groupId === group.id);
@@ -257,21 +350,27 @@ function loadProject(project) {
   state.selectedSceneId = firstScene?.id || null;
   state.selectedHotspotId = firstScene?.hotspots?.[0]?.id || null;
   state.selectedFloorplanId = getFloorplanForGroup(state.selectedGroupId)?.id || null;
+  const fixedLinkCodes = ensureUniqueSceneLinkCodes();
 
   projectNameInput.value = project.project.name || 'Untitled';
-  projectFovInput.value = project.scenes[0]?.initialViewParameters?.fov || 1.4;
+  syncSceneFovInput();
   renderAll();
   updatePlacementButtonLabel();
   initEditorViewer(project);
+  if (fixedLinkCodes > 0) {
+    updateStatus('Duplicate link codes were fixed automatically.');
+  }
 }
 
 function renderAll() {
   renderSceneGroupOptions();
   renderSceneList();
+  renderSceneCommentField();
   renderHotspotList();
   renderLinkEditor();
   renderContentBlocks();
   updateSceneTitle();
+  syncSceneFovInput();
   renderIconOptions();
   renderMediaList();
   renderFloorplans();
@@ -281,6 +380,18 @@ function renderAll() {
 function updateSceneTitle() {
   const scene = getSelectedScene();
   sceneTitle.textContent = scene ? `Scene: ${scene.name}` : 'Scene: -';
+}
+
+function syncSceneFovInput() {
+  if (!projectFovInput) return;
+  const scene = getSelectedScene();
+  if (!scene) {
+    projectFovInput.value = '1.4';
+    projectFovInput.disabled = true;
+    return;
+  }
+  projectFovInput.disabled = false;
+  projectFovInput.value = String(Number(getSelectedSceneFov().toFixed(2)));
 }
 
 function getSelectedScene() {
@@ -296,9 +407,41 @@ function getGroupById(groupId) {
   return state.project?.groups?.find((group) => group.id === groupId) || null;
 }
 
+function getSceneListLabel(scene) {
+  if (!scene) return '';
+  if (state.sceneLabelMode === 'alias') {
+    return String(scene.alias || '').trim();
+  }
+  return String(scene.name || '').trim();
+}
+
+function compareScenesByName(a, b) {
+  const nameA = getSceneListLabel(a);
+  const nameB = getSceneListLabel(b);
+  const cmp = nameA.localeCompare(nameB, undefined, { sensitivity: 'base', numeric: true });
+  if (cmp !== 0) return cmp;
+  return String(a?.id || '').localeCompare(String(b?.id || ''), undefined, { sensitivity: 'base', numeric: true });
+}
+
+function compareScenesByUploadId(a, b) {
+  return String(a?.id || '').localeCompare(String(b?.id || ''), undefined, { sensitivity: 'base', numeric: true });
+}
+
+function sortScenesForList(scenes) {
+  const list = [...(scenes || [])];
+  const key = state.sceneSortKey === 'upload' ? 'upload' : 'name';
+  const direction = state.sceneSortDirection === 'desc' ? -1 : 1;
+  list.sort((a, b) => {
+    const cmp = key === 'upload' ? compareScenesByUploadId(a, b) : compareScenesByName(a, b);
+    return cmp * direction;
+  });
+  return list;
+}
+
 function getScenesForSelectedGroup() {
   const groupId = state.selectedGroupId;
-  return (state.project?.scenes || []).filter((scene) => scene.groupId === groupId);
+  const scenes = (state.project?.scenes || []).filter((scene) => scene.groupId === groupId);
+  return sortScenesForList(scenes);
 }
 
 function getPreferredSceneForGroup(groupId) {
@@ -307,6 +450,82 @@ function getPreferredSceneForGroup(groupId) {
   const group = getGroupById(groupId);
   const preferred = scenes.find((scene) => scene.id === group?.mainSceneId);
   return preferred || scenes[0];
+}
+
+function updateSceneSortButtons() {
+  if (btnSceneSortName) {
+    const activeName = state.sceneSortKey === 'name';
+    btnSceneSortName.classList.toggle('active', activeName);
+    const arrow = state.sceneSortDirection === 'asc' ? '↓' : '↑';
+    btnSceneSortName.textContent = activeName
+      ? `A/Z ${arrow}`
+      : 'A/Z';
+    btnSceneSortName.title = activeName
+      ? `${state.sceneLabelMode === 'alias' ? 'Alias' : 'Name'} order (${state.sceneSortDirection})`
+      : `Sort by scene ${state.sceneLabelMode === 'alias' ? 'alias' : 'name'}`;
+  }
+  if (btnSceneSortUpload) {
+    const activeUpload = state.sceneSortKey === 'upload';
+    btnSceneSortUpload.classList.toggle('active', activeUpload);
+    const arrow = state.sceneSortDirection === 'asc' ? '↓' : '↑';
+    btnSceneSortUpload.textContent = activeUpload
+      ? `UPLOAD ${arrow}`
+      : 'UPLOAD';
+    btnSceneSortUpload.title = activeUpload
+      ? `Upload order (${state.sceneSortDirection})`
+      : 'Sort by scene internal id';
+  }
+  if (btnSceneLabelMode) {
+    const aliasMode = state.sceneLabelMode === 'alias';
+    btnSceneLabelMode.classList.toggle('active', aliasMode);
+    btnSceneLabelMode.textContent = aliasMode ? 'Alias ON' : 'Alias OFF';
+    btnSceneLabelMode.title = aliasMode
+      ? 'Scenes list shows alias values'
+      : 'Scenes list shows scene names';
+  }
+}
+
+function toggleSceneSort(sortKey) {
+  if (state.sceneSortKey === sortKey) {
+    state.sceneSortDirection = state.sceneSortDirection === 'asc' ? 'desc' : 'asc';
+  } else {
+    state.sceneSortKey = sortKey;
+    state.sceneSortDirection = 'asc';
+  }
+  renderSceneList();
+  const modeLabel = state.sceneSortKey === 'upload'
+    ? 'upload id'
+    : (state.sceneLabelMode === 'alias' ? 'alias' : 'name');
+  updateStatus(`Scenes sorted by ${modeLabel} (${state.sceneSortDirection}).`);
+}
+
+function toggleSceneLabelMode() {
+  state.sceneLabelMode = state.sceneLabelMode === 'alias' ? 'name' : 'alias';
+  renderSceneList();
+  updateStatus(`Scene list mode: ${state.sceneLabelMode === 'alias' ? 'Alias' : 'Name'}.`);
+}
+
+function isTypingTarget(target) {
+  if (!target || !(target instanceof Element)) return false;
+  if (target.closest('input, textarea, select, [contenteditable="true"]')) return true;
+  return false;
+}
+
+function moveSceneSelectionBy(delta) {
+  const scenes = getScenesForSelectedGroup();
+  if (!scenes.length) return false;
+
+  let index = scenes.findIndex((scene) => scene.id === state.selectedSceneId);
+  if (index < 0) index = 0;
+  const nextIndex = Math.min(scenes.length - 1, Math.max(0, index + delta));
+  if (nextIndex === index) return true;
+
+  const nextScene = scenes[nextIndex];
+  if (!nextScene) return false;
+  selectScene(nextScene.id);
+  const activeButton = sceneList?.querySelector(`.scene-item-main[data-scene-id="${nextScene.id}"]`);
+  activeButton?.scrollIntoView({ block: 'nearest' });
+  return true;
 }
 
 function getSelectedHotspot() {
@@ -334,12 +553,97 @@ function getSelectedLinkHotspot() {
   return isSceneLinkHotspot(selected) ? selected : null;
 }
 
-function renderLinkEditor() {
-  if (!hotspotTitleInput || !linkTargetSceneSelect || !linkCommentInput) return;
+function getPendingSceneLinkDraftForSelectedScene() {
+  if (!pendingSceneLinkDraft) return null;
+  return pendingSceneLinkDraft.sceneId === state.selectedSceneId ? pendingSceneLinkDraft : null;
+}
 
+function normalizeSceneLinkColorKey(key) {
+  return normalizeFloorplanColorKey(key || 'yellow');
+}
+
+function getSceneLinkColorHex(colorKey) {
+  return FLOORPLAN_COLOR_MAP[normalizeSceneLinkColorKey(colorKey)];
+}
+
+function colorLabelFromKey(colorKey) {
+  const labels = {
+    yellow: 'Yellow',
+    red: 'Red',
+    cyan: 'Cyan',
+    lightgreen: 'Light Green',
+    magenta: 'Magenta'
+  };
+  return labels[colorKey] || colorKey;
+}
+
+function renderSceneLinkColorOptions(selectElement, selectedKey) {
+  if (!selectElement) return;
+  const normalized = normalizeSceneLinkColorKey(selectedKey);
+  selectElement.innerHTML = '';
+  Object.keys(FLOORPLAN_COLOR_MAP).forEach((key) => {
+    const option = document.createElement('option');
+    option.value = key;
+    option.textContent = '⬤';
+    option.title = colorLabelFromKey(key);
+    option.style.color = getSceneLinkColorHex(key);
+    selectElement.appendChild(option);
+  });
+  selectElement.value = normalized;
+  selectElement.style.color = getSceneLinkColorHex(normalized);
+}
+
+function getLinkTargetSceneOptions(currentSceneId) {
+  const allScenes = state.project?.scenes || [];
+  const currentScene = allScenes.find((scene) => scene.id === currentSceneId) || null;
+  if (state.linkTargetAllGroups) {
+    return allScenes.filter((scene) => scene.id !== currentSceneId);
+  }
+  const currentGroupId = currentScene?.groupId || state.selectedGroupId;
+  return allScenes.filter((scene) => scene.id !== currentSceneId && scene.groupId === currentGroupId);
+}
+
+function formatTargetSceneOptionLabel(scene, { includeGroup = false } = {}) {
+  if (!scene) return '';
+  const sceneName = scene.name || scene.id;
+  if (!includeGroup) return sceneName;
+  const groupName = getGroupById(scene.groupId)?.name || scene.groupId || 'Unknown group';
+  return `${sceneName} (${groupName})`;
+}
+
+function updateLinkNoteModeUi() {
+  if (linkNoteLabel) {
+    linkNoteLabel.textContent = 'Comment (optional)';
+  }
+}
+
+function renderLinkEditor() {
+  if (!linkTargetSceneSelect || !linkCommentInput) return;
+
+  const selectedScene = getSelectedScene();
   const linkHotspot = getSelectedLinkHotspot();
-  const scenes = state.project?.scenes || [];
-  const canEditLink = Boolean(linkHotspot && placementMode);
+  const pendingDraft = getPendingSceneLinkDraftForSelectedScene();
+  const scenes = getLinkTargetSceneOptions(state.selectedSceneId);
+  const allScenes = state.project?.scenes || [];
+  const currentSceneId = state.selectedSceneId;
+  const canEditLink = Boolean((linkHotspot || pendingDraft) && placementMode);
+  const lockGlobalLinkControls = placementMode;
+  const activeColorKey = normalizeSceneLinkColorKey(linkHotspot?.linkColorKey || pendingDraft?.linkColorKey || state.newLinkColorKey);
+  if (btnAddSceneLink) btnAddSceneLink.disabled = !selectedScene;
+  if (btnDeleteSceneLink) btnDeleteSceneLink.disabled = lockGlobalLinkControls;
+  if (btnRemoveAllLinks) btnRemoveAllLinks.disabled = lockGlobalLinkControls;
+  if (linkNewColorSelect) linkNewColorSelect.disabled = !canEditLink;
+  if (linkTargetAllGroupsToggle) {
+    linkTargetAllGroupsToggle.disabled = !canEditLink;
+    const flagLabel = linkTargetAllGroupsToggle.closest('.inline-flag');
+    flagLabel?.classList.toggle('disabled', !canEditLink);
+  }
+  renderSceneLinkColorOptions(linkNewColorSelect, activeColorKey);
+  updateLinkNoteModeUi();
+  linkCommentInput.placeholder = 'Comment (optional)';
+  if (linkTargetAllGroupsToggle) {
+    linkTargetAllGroupsToggle.checked = Boolean(state.linkTargetAllGroups);
+  }
 
   linkTargetSceneSelect.innerHTML = '';
   const none = document.createElement('option');
@@ -348,31 +652,56 @@ function renderLinkEditor() {
   linkTargetSceneSelect.appendChild(none);
 
   scenes.forEach((scene) => {
+    if (scene.id === currentSceneId) {
+      return;
+    }
     const option = document.createElement('option');
     option.value = scene.id;
-    option.textContent = scene.name || scene.id;
+    option.textContent = formatTargetSceneOptionLabel(scene, {
+      includeGroup: state.linkTargetAllGroups
+    });
     linkTargetSceneSelect.appendChild(option);
   });
 
-  if (!linkHotspot) {
-    hotspotTitleInput.value = '';
+  if (!linkHotspot && !pendingDraft) {
     linkCommentInput.value = '';
     linkTargetSceneSelect.value = '';
-    hotspotTitleInput.disabled = true;
-    hotspotTitleInput.readOnly = true;
     linkCommentInput.disabled = true;
     linkTargetSceneSelect.disabled = true;
     return;
   }
 
-  const sceneLinkBlock = getSceneLinkBlock(linkHotspot);
-  hotspotTitleInput.disabled = false;
-  hotspotTitleInput.readOnly = true;
+  let selectedTarget = '';
+  let noteValue = '';
+
+  if (linkHotspot) {
+    const sceneLinkBlock = getSceneLinkBlock(linkHotspot);
+    if (sceneLinkBlock && typeof sceneLinkBlock.comment !== 'string') {
+      sceneLinkBlock.comment = '';
+    }
+    selectedTarget = sceneLinkBlock?.sceneId || '';
+    noteValue = sceneLinkBlock?.comment || '';
+  } else if (pendingDraft) {
+    selectedTarget = pendingDraft.targetSceneId || '';
+    noteValue = pendingDraft.comment || '';
+  }
+
+  if (selectedTarget && !scenes.some((scene) => scene.id === selectedTarget)) {
+    const targetScene = allScenes.find((scene) => scene.id === selectedTarget);
+    if (targetScene) {
+      const option = document.createElement('option');
+      option.value = targetScene.id;
+      option.textContent = state.linkTargetAllGroups
+        ? formatTargetSceneOptionLabel(targetScene, { includeGroup: true })
+        : `${targetScene.name || targetScene.id} (other group)`;
+      linkTargetSceneSelect.appendChild(option);
+    }
+  }
+
   linkCommentInput.disabled = !canEditLink;
   linkTargetSceneSelect.disabled = !canEditLink;
-  hotspotTitleInput.value = linkHotspot.title || '';
-  linkCommentInput.value = sceneLinkBlock?.comment || '';
-  linkTargetSceneSelect.value = sceneLinkBlock?.sceneId || '';
+  linkCommentInput.value = noteValue;
+  linkTargetSceneSelect.value = selectedTarget === currentSceneId ? '' : selectedTarget;
 }
 
 function getFloorplanForGroup(groupId) {
@@ -384,14 +713,384 @@ function getSelectedFloorplan() {
   return getFloorplanForGroup(state.selectedGroupId);
 }
 
+function getSelectedFloorplanNode() {
+  const floorplan = getSelectedFloorplan();
+  const sceneId = state.selectedSceneId;
+  if (!floorplan || !sceneId) return null;
+  return (floorplan.nodes || []).find((node) => node.sceneId === sceneId) || null;
+}
+
+function getSelectedFloorplanNodes() {
+  const floorplan = getSelectedFloorplan();
+  if (!floorplan) return [];
+  const nodes = floorplan.nodes || [];
+  if (floorplanSelectAllMode) {
+    return nodes.slice();
+  }
+  const selected = getSelectedFloorplanNode();
+  return selected ? [selected] : [];
+}
+
+function sceneHasGeneratedTiles(scene) {
+  if (!scene) return false;
+  const hasPaths = Boolean(scene.tilesPath && scene.previewPath);
+  const levels = Array.isArray(scene.levels) ? scene.levels : [];
+  const hasRenderableLevel = levels.some((level) => (
+    Number.isFinite(Number(level?.size)) &&
+    Number(level.size) > 0 &&
+    Number.isFinite(Number(level?.tileSize)) &&
+    Number(level.tileSize) > 0 &&
+    !level?.fallbackOnly
+  ));
+  return hasPaths && hasRenderableLevel;
+}
+
+function renderSceneCommentField() {
+  if (!sceneCommentInput) return;
+  const scene = getSelectedScene();
+  if (!scene) {
+    sceneCommentInput.value = '';
+    sceneCommentInput.disabled = true;
+    return;
+  }
+  if (typeof scene.comment !== 'string') {
+    scene.comment = '';
+  }
+  sceneCommentInput.disabled = false;
+  sceneCommentInput.value = scene.comment;
+}
+
+function updateFloorplanDeleteNodeUi() {
+  if (!btnFloorplanDeleteNode) return;
+  const hasFloorplan = Boolean(getSelectedFloorplan());
+  const hasSelectedNodes = getSelectedFloorplanNodes().length > 0;
+  btnFloorplanDeleteNode.disabled = !hasFloorplan || !floorplanEditMode || !hasSelectedNodes;
+}
+
+function updateFloorplanSelectAllUi() {
+  if (!btnFloorplanSelectAll) return;
+  const floorplan = getSelectedFloorplan();
+  const hasNodes = (floorplan?.nodes || []).length > 0;
+  btnFloorplanSelectAll.disabled = !floorplanEditMode || !hasNodes;
+  btnFloorplanSelectAll.classList.toggle('active', floorplanSelectAllMode && floorplanEditMode);
+  btnFloorplanSelectAll.textContent = floorplanSelectAllMode && floorplanEditMode ? 'All Selected' : 'Select All';
+}
+
+function normalizeFloorplanColorKey(key) {
+  return Object.prototype.hasOwnProperty.call(FLOORPLAN_COLOR_MAP, key) ? key : 'yellow';
+}
+
+function getSelectedFloorplanColorKey() {
+  const floorplan = getSelectedFloorplan();
+  const selectedNodes = getSelectedFloorplanNodes();
+  const keyFromSelection = selectedNodes[0]?.colorKey;
+  return normalizeFloorplanColorKey(keyFromSelection || floorplan?.markerColorKey || 'yellow');
+}
+
+function hexToRgb(hex) {
+  const clean = String(hex || '').replace('#', '');
+  const value = clean.length === 3
+    ? clean.split('').map((c) => c + c).join('')
+    : clean;
+  if (!/^[0-9a-f]{6}$/i.test(value)) return { r: 240, g: 200, b: 75 };
+  return {
+    r: Number.parseInt(value.slice(0, 2), 16),
+    g: Number.parseInt(value.slice(2, 4), 16),
+    b: Number.parseInt(value.slice(4, 6), 16)
+  };
+}
+
+function rgbToHex(r, g, b) {
+  const clamp = (v) => Math.max(0, Math.min(255, Math.round(v)));
+  return `#${clamp(r).toString(16).padStart(2, '0')}${clamp(g).toString(16).padStart(2, '0')}${clamp(b).toString(16).padStart(2, '0')}`;
+}
+
+function darkenHex(hex, ratio = 0.22) {
+  const rgb = hexToRgb(hex);
+  const k = Math.max(0, Math.min(1, 1 - ratio));
+  return rgbToHex(rgb.r * k, rgb.g * k, rgb.b * k);
+}
+
+function withAlpha(hex, alpha = 0.35) {
+  const rgb = hexToRgb(hex);
+  const a = Math.max(0, Math.min(1, alpha));
+  return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${a})`;
+}
+
+function getContrastTextColor(hex) {
+  const rgb = hexToRgb(hex);
+  const luminance = (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b) / 255;
+  return luminance >= 0.62 ? '#111111' : '#f8fafc';
+}
+
+function applyFloorplanNodeColorStyles(nodeElement, colorKey) {
+  const color = FLOORPLAN_COLOR_MAP[normalizeFloorplanColorKey(colorKey)];
+  nodeElement.style.setProperty('--floorplan-marker-color', color);
+  nodeElement.style.setProperty('--floorplan-marker-border', darkenHex(color, 0.24));
+  nodeElement.style.setProperty('--floorplan-marker-ring', withAlpha(color, 0.35));
+  nodeElement.style.setProperty('--floorplan-marker-text', getContrastTextColor(color));
+}
+
+function updateFloorplanColorPaletteUi() {
+  if (!floorplanColorSelect) return;
+  const floorplan = getSelectedFloorplan();
+  const selectedKey = getSelectedFloorplanColorKey();
+  const disabled = !floorplan || (!floorplanEditMode && !floorplanPlaceMode);
+  floorplanColorSelect.innerHTML = '';
+  Object.keys(FLOORPLAN_COLOR_MAP).forEach((key) => {
+    const option = document.createElement('option');
+    option.value = key;
+    option.textContent = '⬤';
+    option.title = colorLabelFromKey(key);
+    option.style.color = FLOORPLAN_COLOR_MAP[key];
+    floorplanColorSelect.appendChild(option);
+  });
+  floorplanColorSelect.disabled = disabled;
+  floorplanColorSelect.value = selectedKey;
+  floorplanColorSelect.style.color = FLOORPLAN_COLOR_MAP[selectedKey];
+}
+
+function setSelectedFloorplanColor(colorKey) {
+  const floorplan = getSelectedFloorplan();
+  if (!floorplan) return;
+  if (!floorplanEditMode && !floorplanPlaceMode) {
+    updateStatus('Enable Place or Edit to change map color.');
+    return;
+  }
+  const nextKey = normalizeFloorplanColorKey(colorKey);
+  floorplan.markerColorKey = nextKey;
+  const selectedNodes = getSelectedFloorplanNodes();
+  if (floorplanEditMode && selectedNodes.length) {
+    selectedNodes.forEach((node) => {
+      node.colorKey = nextKey;
+    });
+  }
+  renderFloorplans();
+  autosave();
+}
+
+function getFloorplanZoom(groupId = state.selectedGroupId) {
+  if (!groupId) return 1;
+  const value = floorplanZoomByGroup.get(groupId);
+  return Number.isFinite(value) ? value : 1;
+}
+
+function setFloorplanZoom(nextZoom) {
+  const groupId = state.selectedGroupId;
+  if (!groupId) return;
+  const clamped = Math.min(8, Math.max(0.5, nextZoom));
+  floorplanZoomByGroup.set(groupId, clamped);
+  renderFloorplans();
+}
+
+function zoomFloorplanAt(event, groupId) {
+  if (!groupId || !miniMap) return;
+  event.preventDefault();
+  const oldZoom = getFloorplanZoom(groupId);
+  const factor = event.deltaY < 0 ? 1.1 : 0.9;
+  const nextZoom = Math.min(8, Math.max(0.5, oldZoom * factor));
+  if (Math.abs(nextZoom - oldZoom) < 0.0001) return;
+
+  const rect = miniMap.getBoundingClientRect();
+  const anchorX = event.clientX - rect.left;
+  const anchorY = event.clientY - rect.top;
+  const worldX = miniMap.scrollLeft + anchorX;
+  const worldY = miniMap.scrollTop + anchorY;
+
+  floorplanZoomByGroup.set(groupId, nextZoom);
+  renderFloorplans();
+  requestAnimationFrame(() => {
+    const appliedZoom = getFloorplanZoom(groupId);
+    const scale = appliedZoom / oldZoom;
+    miniMap.scrollLeft = (worldX * scale) - anchorX;
+    miniMap.scrollTop = (worldY * scale) - anchorY;
+  });
+}
+
+function startFloorplanPan(event) {
+  if (floorplanPlaceMode) return;
+  if (event.button !== 0 || !miniMap) return;
+  if (event.target.closest('.floorplan-node')) return;
+  floorplanPanState = {
+    x: event.clientX,
+    y: event.clientY,
+    scrollLeft: miniMap.scrollLeft,
+    scrollTop: miniMap.scrollTop
+  };
+  miniMap.classList.add('is-panning');
+  window.addEventListener('mousemove', handleFloorplanPanMove);
+  window.addEventListener('mouseup', stopFloorplanPan);
+  event.preventDefault();
+}
+
+function handleFloorplanPanMove(event) {
+  if (!floorplanPanState || !miniMap) return;
+  const dx = event.clientX - floorplanPanState.x;
+  const dy = event.clientY - floorplanPanState.y;
+  miniMap.scrollLeft = floorplanPanState.scrollLeft - dx;
+  miniMap.scrollTop = floorplanPanState.scrollTop - dy;
+}
+
+function stopFloorplanPan() {
+  floorplanPanState = null;
+  if (miniMap) {
+    miniMap.classList.remove('is-panning');
+  }
+  window.removeEventListener('mousemove', handleFloorplanPanMove);
+  window.removeEventListener('mouseup', stopFloorplanPan);
+}
+
+function updateFloorplanLabelToggleUi() {
+  if (!btnFloorplanToggleLabels) return;
+  btnFloorplanToggleLabels.classList.toggle('active', floorplanShowLabels);
+  btnFloorplanToggleLabels.textContent = floorplanShowLabels ? 'Names ON' : 'Names OFF';
+}
+
+function setFloorplanShowLabels(nextMode) {
+  floorplanShowLabels = Boolean(nextMode);
+  updateFloorplanLabelToggleUi();
+  renderFloorplans();
+}
+
+function updateFloorplanPlaceUi() {
+  if (btnFloorplanPlaceScene) {
+    btnFloorplanPlaceScene.classList.toggle('active', floorplanPlaceMode);
+    btnFloorplanPlaceScene.textContent = floorplanPlaceMode ? 'Place ON' : 'Place';
+  }
+}
+
+function updateFloorplanEditUi() {
+  if (btnFloorplanEdit) {
+    btnFloorplanEdit.classList.toggle('active', floorplanEditMode);
+    btnFloorplanEdit.textContent = floorplanEditMode ? 'Edit ON' : 'Edit';
+  }
+}
+
+function setFloorplanSelectAllMode(nextMode, { silent = false } = {}) {
+  if (!floorplanEditMode) {
+    floorplanSelectAllMode = false;
+    updateFloorplanSelectAllUi();
+    return;
+  }
+  const floorplan = getSelectedFloorplan();
+  if (!floorplan || !(floorplan.nodes || []).length) {
+    floorplanSelectAllMode = false;
+    updateFloorplanSelectAllUi();
+    return;
+  }
+  floorplanSelectAllMode = Boolean(nextMode);
+  if (!silent) {
+    updateStatus(floorplanSelectAllMode ? 'All map points selected.' : 'All map points unselected.');
+  }
+  updateFloorplanColorPaletteUi();
+  updateFloorplanDeleteNodeUi();
+  updateFloorplanSelectAllUi();
+  renderFloorplans();
+}
+
+function setFloorplanPlaceMode(nextMode) {
+  floorplanPlaceMode = Boolean(nextMode);
+  if (floorplanPlaceMode) {
+    floorplanEditMode = false;
+    floorplanSelectAllMode = false;
+  }
+  if (floorplanPlaceMode) {
+    stopFloorplanPan();
+  }
+  if (miniMap) {
+    miniMap.classList.toggle('floorplan-pan-enabled', !floorplanPlaceMode && miniMap.classList.contains('has-floorplan'));
+  }
+  updateFloorplanPlaceUi();
+  updateFloorplanEditUi();
+  updateFloorplanColorPaletteUi();
+  updateFloorplanDeleteNodeUi();
+  updateFloorplanSelectAllUi();
+}
+
+function setFloorplanEditMode(nextMode) {
+  floorplanEditMode = Boolean(nextMode);
+  if (floorplanEditMode) {
+    floorplanPlaceMode = false;
+  } else {
+    floorplanSelectAllMode = false;
+  }
+  if (miniMap) {
+    miniMap.classList.toggle('floorplan-pan-enabled', !floorplanPlaceMode && miniMap.classList.contains('has-floorplan'));
+  }
+  updateFloorplanPlaceUi();
+  updateFloorplanEditUi();
+  updateFloorplanColorPaletteUi();
+  updateFloorplanDeleteNodeUi();
+  updateFloorplanSelectAllUi();
+}
+
+function updateMapWindowBounds() {
+  if (!floorplanMapWindowOpen || !mapPanelBody) return;
+  const sceneRect = viewerCanvas?.getBoundingClientRect();
+  const layoutRect = layoutRoot?.getBoundingClientRect();
+  const baseRect = sceneRect || layoutRect;
+  if (!baseRect) return;
+
+  // Maximise map: full scene height, only 1/3 of scene width.
+  const mapWidth = Math.max(160, Math.round(baseRect.width / 3));
+  const leftPx = Math.max(8, Math.round(baseRect.right - mapWidth));
+  const topPx = Math.max(8, Math.round(baseRect.top));
+  const rightPx = Math.max(8, Math.round(window.innerWidth - (leftPx + mapWidth)));
+  const bottomPx = Math.max(8, Math.round(window.innerHeight - baseRect.bottom));
+
+  const setInsetVars = (el) => {
+    if (!el) return;
+    el.style.setProperty('--map-window-top', `${topPx}px`);
+    el.style.setProperty('--map-window-right', `${rightPx}px`);
+    el.style.setProperty('--map-window-bottom', `${bottomPx}px`);
+    el.style.setProperty('--map-window-left', `${leftPx}px`);
+  };
+  setInsetVars(mapPanelBody);
+  setInsetVars(mapWindowBackdrop);
+}
+
+function setFloorplanMapWindowOpen(nextMode) {
+  floorplanMapWindowOpen = Boolean(nextMode);
+  if (mapPanelBody) {
+    mapPanelBody.classList.toggle('map-panel-window', floorplanMapWindowOpen);
+    if (!floorplanMapWindowOpen) {
+      mapPanelBody.style.removeProperty('--map-window-top');
+      mapPanelBody.style.removeProperty('--map-window-right');
+      mapPanelBody.style.removeProperty('--map-window-bottom');
+      mapPanelBody.style.removeProperty('--map-window-left');
+    }
+  }
+  if (mapWindowBackdrop) {
+    mapWindowBackdrop.classList.toggle('visible', floorplanMapWindowOpen);
+    mapWindowBackdrop.setAttribute('aria-hidden', floorplanMapWindowOpen ? 'false' : 'true');
+    if (!floorplanMapWindowOpen) {
+      mapWindowBackdrop.style.removeProperty('--map-window-top');
+      mapWindowBackdrop.style.removeProperty('--map-window-right');
+      mapWindowBackdrop.style.removeProperty('--map-window-bottom');
+      mapWindowBackdrop.style.removeProperty('--map-window-left');
+    }
+  }
+  if (btnFloorplanExpand) {
+    btnFloorplanExpand.classList.toggle('active', floorplanMapWindowOpen);
+    btnFloorplanExpand.textContent = floorplanMapWindowOpen ? 'Minimise' : 'Maximise';
+    btnFloorplanExpand.setAttribute('aria-pressed', floorplanMapWindowOpen ? 'true' : 'false');
+  }
+  if (floorplanMapWindowOpen) {
+    updateMapWindowBounds();
+  }
+}
+
 function selectScene(sceneId) {
   const scene = state.project?.scenes?.find((item) => item.id === sceneId);
   if (!scene) return;
+  clearPendingSceneLinkDraft(false);
 
   state.selectedGroupId = scene.groupId || state.selectedGroupId;
   state.selectedSceneId = scene.id;
   state.selectedHotspotId = scene.hotspots[0]?.id || null;
   state.selectedFloorplanId = getFloorplanForGroup(state.selectedGroupId)?.id || null;
+  state.multiSelectedSceneIds = [scene.id];
+  state.sceneSelectionAnchorId = scene.id;
 
   renderSceneGroupOptions();
   updateSceneTitle();
@@ -399,14 +1098,56 @@ function selectScene(sceneId) {
   renderContentBlocks();
   renderIconOptions();
   renderMediaList();
+  renderSceneCommentField();
   renderFloorplans();
   switchEditorScene();
 
   const sceneButtons = sceneList.querySelectorAll('.scene-item-main');
+  const multiSelected = new Set(state.multiSelectedSceneIds || []);
   sceneButtons.forEach((button) => {
-    button.classList.toggle('active', button.dataset.sceneId === scene.id);
+    const isCurrent = button.dataset.sceneId === scene.id;
+    button.classList.toggle('active', isCurrent);
+    button.classList.toggle('multi-selected', multiSelected.has(button.dataset.sceneId));
   });
 
+}
+
+function handleSceneMultiSelectClick(sceneId, event, scenesInGroup) {
+  const sceneIds = scenesInGroup.map((scene) => scene.id);
+  let selected = new Set((state.multiSelectedSceneIds || []).filter((id) => sceneIds.includes(id)));
+  if (!selected.size && state.selectedSceneId && sceneIds.includes(state.selectedSceneId)) {
+    selected.add(state.selectedSceneId);
+  }
+
+  const withCtrl = Boolean(event.ctrlKey || event.metaKey);
+  if (event.shiftKey) {
+    const anchor = sceneIds.includes(state.sceneSelectionAnchorId)
+      ? state.sceneSelectionAnchorId
+      : (sceneIds.includes(state.selectedSceneId) ? state.selectedSceneId : sceneId);
+    const anchorIndex = sceneIds.indexOf(anchor);
+    const currentIndex = sceneIds.indexOf(sceneId);
+    if (anchorIndex !== -1 && currentIndex !== -1) {
+      const [start, end] = anchorIndex <= currentIndex
+        ? [anchorIndex, currentIndex]
+        : [currentIndex, anchorIndex];
+      const rangeIds = sceneIds.slice(start, end + 1);
+      selected = withCtrl ? new Set([...selected, ...rangeIds]) : new Set(rangeIds);
+      state.sceneSelectionAnchorId = anchor;
+    }
+  } else if (withCtrl) {
+    if (selected.has(sceneId)) {
+      selected.delete(sceneId);
+    } else {
+      selected.add(sceneId);
+    }
+    state.sceneSelectionAnchorId = sceneId;
+  }
+
+  state.multiSelectedSceneIds = Array.from(selected);
+  renderSceneList();
+  renderFloorplans();
+  const count = state.multiSelectedSceneIds.length;
+  updateStatus(count ? `${count} scene(s) selected.` : 'No scene selected for batch actions.');
 }
 
 function renderSceneGroupOptions() {
@@ -430,22 +1171,52 @@ function renderSceneGroupOptions() {
 
 function renderSceneList() {
   sceneList.innerHTML = '';
+  updateSceneSortButtons();
   const scenes = getScenesForSelectedGroup();
   const group = getSelectedGroup();
+  const sceneIds = new Set(scenes.map((scene) => scene.id));
+  state.multiSelectedSceneIds = (state.multiSelectedSceneIds || []).filter((id) => sceneIds.has(id));
+  if (!state.multiSelectedSceneIds.length && state.selectedSceneId && sceneIds.has(state.selectedSceneId)) {
+    state.multiSelectedSceneIds = [state.selectedSceneId];
+  }
+  const multiSelected = new Set(state.multiSelectedSceneIds);
   if (btnSetMainScene) {
     btnSetMainScene.disabled = scenes.length === 0;
+  }
+  if (btnSetOrientation) {
+    btnSetOrientation.disabled = !Boolean(getSelectedScene());
+  }
+  if (btnDeleteSelectedScenes) {
+    btnDeleteSelectedScenes.disabled = !Boolean(getSelectedScene());
   }
   scenes.forEach((scene) => {
     const row = document.createElement('div');
     row.className = 'scene-item-row';
 
     const main = document.createElement('button');
-    main.className = `list-item scene-item-main${scene.id === state.selectedSceneId ? ' active' : ''}`;
+    main.className = `list-item scene-item-main${scene.id === state.selectedSceneId ? ' active' : ''}${multiSelected.has(scene.id) ? ' multi-selected' : ''}`;
     const isMainScene = group?.mainSceneId === scene.id;
-    main.textContent = isMainScene ? `${scene.name} (Main)` : scene.name;
+    const sceneLabel = getSceneListLabel(scene);
+    const mainLabel = state.sceneLabelMode === 'name' && isMainScene
+      ? `${sceneLabel || scene.name || ''} (Main)`
+      : sceneLabel;
+    main.textContent = mainLabel || '\u00A0';
     main.dataset.sceneId = scene.id;
     let clickTimer = null;
-    main.addEventListener('click', () => {
+    main.addEventListener('click', (event) => {
+      if (event.ctrlKey || event.metaKey || event.shiftKey) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (clickTimer) {
+          clearTimeout(clickTimer);
+          clickTimer = null;
+        }
+        handleSceneMultiSelectClick(scene.id, event, scenes);
+        return;
+      }
+      // Normal click exits multi-select and keeps only the clicked scene.
+      state.multiSelectedSceneIds = [scene.id];
+      state.sceneSelectionAnchorId = scene.id;
       clickTimer = setTimeout(() => {
         selectScene(scene.id);
       }, 220);
@@ -471,30 +1242,36 @@ function renderSceneList() {
       deleteSceneById(scene.id);
     });
 
-    const orientationBtn = document.createElement('button');
-    orientationBtn.className = `scene-action${scene.orientationSaved ? ' orientation-set' : ''}`;
-    orientationBtn.type = 'button';
-    orientationBtn.title = scene.orientationSaved ? 'Orientation saved' : 'Set orientation';
-    orientationBtn.textContent = '◉';
-    orientationBtn.addEventListener('click', (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      setSceneOrientationById(scene.id);
-    });
+    const tilesIndicator = document.createElement('button');
+    const tilesReady = sceneHasGeneratedTiles(scene);
+    tilesIndicator.className = `scene-action scene-tile-indicator${tilesReady ? ' tile-ready' : ''}`;
+    tilesIndicator.type = 'button';
+    tilesIndicator.disabled = true;
+    tilesIndicator.title = tilesReady ? 'Tiles created' : 'Tiles not created';
+    tilesIndicator.setAttribute('aria-label', tilesReady ? 'Tiles created' : 'Tiles not created');
+    tilesIndicator.textContent = 'T';
 
     row.appendChild(main);
-    row.appendChild(orientationBtn);
+    row.appendChild(tilesIndicator);
     row.appendChild(deleteBtn);
     sceneList.appendChild(row);
   });
 }
 
-function renameScene(scene, newName) {
-  scene.name = (newName || '').trim() || 'Untitled Scene';
+function renameScene(scene, newValue, mode = 'name') {
+  if (mode === 'alias') {
+    scene.alias = String(newValue || '').trim();
+    renderSceneList();
+    scheduleMarkerRender();
+    autosave();
+    return;
+  }
+  scene.name = (newValue || '').trim() || 'Untitled Scene';
   if (scene.id === state.selectedSceneId) {
     updateSceneTitle();
   }
   renderSceneList();
+  scheduleMarkerRender();
   autosave();
 }
 
@@ -509,7 +1286,8 @@ function startInlineSceneRename(scene, listButton) {
 
   const input = document.createElement('input');
   input.type = 'text';
-  input.value = scene.name || '';
+  const renameMode = state.sceneLabelMode === 'alias' ? 'alias' : 'name';
+  input.value = renameMode === 'alias' ? (scene.alias || '') : (scene.name || '');
   input.className = 'input';
   input.style.width = '100%';
   listButton.appendChild(input);
@@ -521,7 +1299,7 @@ function startInlineSceneRename(scene, listButton) {
     if (committed) return;
     committed = true;
     renamingSceneId = null;
-    renameScene(scene, input.value);
+    renameScene(scene, input.value, renameMode);
   };
   const cancel = () => {
     if (committed) return;
@@ -552,6 +1330,7 @@ function initEditorViewer(project) {
     editorViewer = createEditorViewer(project);
     panoEditor.addEventListener('click', handleViewerClick);
     viewerCanvas.addEventListener('click', handleViewerClick);
+    viewerCanvas.addEventListener('dblclick', handleViewerDoubleClick);
     viewerCanvas.addEventListener('mousemove', handleViewerMouseMove);
     viewerCanvas.addEventListener('mouseleave', hideHotspotHoverCard);
     viewerCanvas.addEventListener('pointerdown', onViewerPointerDown, true);
@@ -650,7 +1429,7 @@ function switchEditorScene() {
   if (!selected) {
     viewerPlaceholder.style.display = 'block';
     panoEditor.style.visibility = 'hidden';
-    hotspotOverlay.innerHTML = '';
+    clearHotspotMarkerElements();
     return;
   }
 
@@ -677,11 +1456,16 @@ function handleViewerClick(event) {
     return;
   }
 
-  if (!state.project || !state.selectedHotspotId) {
-    if (placementMode) {
-      updateStatus('Select a hotspot first.');
-      return;
-    }
+  if (!state.project) {
+    return;
+  }
+  const hasPendingLink = Boolean(
+    pendingSceneLinkDraft &&
+    pendingSceneLinkDraft.sceneId === state.selectedSceneId
+  );
+  if (!state.selectedHotspotId && placementMode && !hasPendingLink) {
+    updateStatus('Select a hotspot first.');
+    return;
   }
   const active = editorScenes.get(state.selectedSceneId);
   if (!active) return;
@@ -703,16 +1487,89 @@ function handleViewerClick(event) {
     return;
   }
 
-  const coords = active.view.screenToCoordinates({ x, y }, {});
+  if (hasPendingLink) {
+    updateStatus('Double-click on the panorama to place the new link.');
+    return;
+  }
+
+  const hotspot = getSelectedLinkHotspot();
+  if (!hotspot) {
+    updateStatus('Select a link first, then drag it or double-click to move it.');
+    return;
+  }
+  updateStatus('Drag the selected link marker or double-click on panorama to move it.');
+}
+
+function handleViewerDoubleClick(event) {
+  if (!state.project || !placementMode) return;
+  const active = editorScenes.get(state.selectedSceneId);
+  if (!active) return;
+
+  const viewPoint = getViewPointFromEvent(event);
+  if (!viewPoint) return;
+  const coords = active.view.screenToCoordinates(viewPoint, {});
   if (!coords || typeof coords.yaw !== 'number' || typeof coords.pitch !== 'number') return;
 
-  const hotspot = getSelectedHotspot();
-  if (!hotspot) return;
+  const hasPendingLink = Boolean(
+    pendingSceneLinkDraft &&
+    pendingSceneLinkDraft.sceneId === state.selectedSceneId
+  );
+
+  if (hasPendingLink) {
+    commitPendingSceneLinkAt(coords, { statusMessage: 'Link created and placed.' });
+    event.preventDefault();
+    event.stopPropagation();
+    return;
+  }
+
+  const hotspot = getSelectedLinkHotspot();
+  if (!hotspot) {
+    updateStatus('Select a link first, then double-click to move it.');
+    return;
+  }
+
   hotspot.yaw = coords.yaw;
   hotspot.pitch = coords.pitch;
-  updateStatus('Hotspot position updated.');
   autosave();
   scheduleMarkerRender();
+  updateStatus(`Link ${hotspot.linkCode || hotspot.title || hotspot.id} moved.`);
+  event.preventDefault();
+  event.stopPropagation();
+}
+
+function commitPendingSceneLinkAt(coords, { statusMessage = 'Link created and placed.' } = {}) {
+  const draft = pendingSceneLinkDraft;
+  const scene = getSelectedScene();
+  if (!draft || !scene || draft.sceneId !== scene.id) return false;
+  if (!coords || typeof coords.yaw !== 'number' || typeof coords.pitch !== 'number') return false;
+
+  const hotspot = createHotspotRecord(
+    draft.linkCode,
+    [{
+      type: 'scene',
+      sceneId: draft.targetSceneId || '',
+      comment: draft.comment || ''
+    }],
+    {
+      linkCode: draft.linkCode,
+      linkColorKey: normalizeSceneLinkColorKey(draft.linkColorKey || state.newLinkColorKey)
+    }
+  );
+  hotspot.yaw = coords.yaw;
+  hotspot.pitch = coords.pitch;
+  scene.hotspots.push(hotspot);
+  state.selectedHotspotId = hotspot.id;
+  clearPendingSceneLinkDraft(false);
+  renderHotspotList();
+  renderLinkEditor();
+  renderContentBlocks();
+  renderIconOptions();
+  renderMediaList();
+  renderFloorplans();
+  updateStatus(statusMessage);
+  autosave();
+  scheduleMarkerRender();
+  return true;
 }
 
 function onViewerPointerDown(event) {
@@ -748,6 +1605,12 @@ function getHotspotSceneLinkTarget(hotspot) {
   return state.project?.scenes?.find((scene) => scene.id === block.sceneId) || null;
 }
 
+function getSceneLinkDisplayName(hotspot, targetScene = null) {
+  const sceneAlias = String(targetScene?.alias || '').trim();
+  if (sceneAlias) return sceneAlias;
+  return targetScene?.name || targetScene?.id || 'Unassigned target';
+}
+
 function openHotspotPreviewOrFollowLink(hotspotId) {
   const scene = getSelectedScene();
   const hotspot = scene?.hotspots?.find((item) => item.id === hotspotId) || null;
@@ -756,7 +1619,7 @@ function openHotspotPreviewOrFollowLink(hotspotId) {
   const targetScene = getHotspotSceneLinkTarget(hotspot);
   if (targetScene) {
     selectScene(targetScene.id);
-    updateStatus(`Go to "${targetScene.name}".`);
+    updateStatus(`Go to "${getSceneLinkDisplayName(hotspot, targetScene)}".`);
     return;
   }
   openHotspotPreview(hotspotId);
@@ -797,9 +1660,12 @@ function getLinkHoverDetails(hotspotId) {
   if (!hotspot || !isSceneLinkHotspot(hotspot)) return null;
   const targetScene = getHotspotSceneLinkTarget(hotspot);
   const sceneBlock = getSceneLinkBlock(hotspot);
+  const targetSceneName = (targetScene?.name || targetScene?.id || 'Unassigned target').trim();
   return {
     linkName: hotspot.linkCode || hotspot.title || hotspot.id,
-    targetName: targetScene?.name || targetScene?.id || 'Unassigned target',
+    linkColor: getSceneLinkColorHex(hotspot.linkColorKey),
+    targetSceneName,
+    targetName: getSceneLinkDisplayName(hotspot, targetScene),
     comment: (sceneBlock?.comment || '').trim()
   };
 }
@@ -836,11 +1702,15 @@ function showHotspotHoverCard(hotspotId, event) {
   }
 
   hoveredLinkHotspotId = hotspotId;
+  hotspotHoverCard.style.setProperty('--hover-link-color', details.linkColor || getSceneLinkColorHex('yellow'));
   const commentHtml = details.comment
     ? `<div class="hover-card-comment">${escapeHtml(details.comment)}</div>`
     : '';
   hotspotHoverCard.innerHTML = `
-    <div class="hover-card-title">${escapeHtml(details.linkName)}</div>
+    <div class="hover-card-title">
+      <span class="hover-card-link-code">${escapeHtml(details.linkName)}</span>
+      <span class="hover-card-scene-name">${escapeHtml(details.targetSceneName)}</span>
+    </div>
     <div class="hover-card-target">Go to ${escapeHtml(details.targetName)}</div>
     ${commentHtml}
   `;
@@ -857,7 +1727,7 @@ function hideHotspotHoverCard() {
 }
 
 function handleViewerMouseMove(event) {
-  if (!viewerCanvas || placementMode || !state.selectedSceneId) {
+  if (!viewerCanvas || !state.selectedSceneId || draggingHotspotId) {
     hideHotspotHoverCard();
     return;
   }
@@ -885,49 +1755,118 @@ function escapeHtml(value) {
     .replace(/'/g, '&#39;');
 }
 
+function clearHotspotMarkerElements() {
+  hotspotMarkerElements.forEach((marker) => marker.remove());
+  hotspotMarkerElements.clear();
+  hotspotMarkerSceneId = null;
+  lastMarkerRenderSignature = null;
+  if (hotspotOverlay) {
+    hotspotOverlay.innerHTML = '';
+  }
+}
+
+function makeMarkerRenderSignature(scene, active) {
+  if (!scene || !active) return '';
+  const params = active.view?.parameters ? active.view.parameters() : active.data?.initialViewParameters || {};
+  const yaw = Number(params.yaw || 0).toFixed(4);
+  const pitch = Number(params.pitch || 0).toFixed(4);
+  const fov = Number(params.fov || 1.4).toFixed(4);
+  return `${scene.id}|${state.selectedHotspotId || ''}|${yaw}|${pitch}|${fov}`;
+}
+
+function buildHotspotMarkerElement(hotspotId) {
+  const marker = document.createElement('div');
+  marker.className = 'hotspot-marker';
+  marker.dataset.hotspotId = hotspotId;
+  marker.addEventListener('pointerdown', (event) => startMarkerDrag(event, hotspotId));
+  hotspotOverlay.appendChild(marker);
+  hotspotMarkerElements.set(hotspotId, marker);
+  return marker;
+}
+
+function updateHotspotMarkerElement(marker, hotspot, active, scale) {
+  const coords = active.view.coordinatesToScreen({ yaw: hotspot.yaw, pitch: hotspot.pitch }, {});
+  const viewWidth = active.view.width();
+  const viewHeight = active.view.height();
+  if (!coords || coords.x === null || coords.y === null || coords.x < 0 || coords.y < 0 || coords.x > viewWidth || coords.y > viewHeight) {
+    marker.style.display = 'none';
+    return;
+  }
+
+  marker.style.display = '';
+  const isSceneLink = isSceneLinkHotspot(hotspot);
+  marker.className = `hotspot-marker${isSceneLink ? ' scene-link-marker' : ''}${hotspot.id === state.selectedHotspotId ? ' active' : ''}`;
+  if (isSceneLink) {
+    const linkColor = getSceneLinkColorHex(hotspot.linkColorKey);
+    marker.style.setProperty('--scene-link-color', linkColor);
+    marker.style.setProperty('--scene-link-border', darkenHex(linkColor, 0.24));
+    marker.style.setProperty('--scene-link-ring', withAlpha(linkColor, 0.35));
+  } else {
+    marker.style.removeProperty('--scene-link-color');
+    marker.style.removeProperty('--scene-link-border');
+    marker.style.removeProperty('--scene-link-ring');
+  }
+  marker.style.left = `${coords.x / scale.x}px`;
+  marker.style.top = `${coords.y / scale.y - 5}px`;
+  const linkTarget = getHotspotSceneLinkTarget(hotspot);
+  marker.title = linkTarget ? `Go to "${getSceneLinkDisplayName(hotspot, linkTarget)}"` : (hotspot.title || hotspot.id);
+}
+
 function scheduleMarkerRender() {
   if (!hotspotOverlay) return;
   if (markerFrame) return;
   markerFrame = requestAnimationFrame(() => {
     markerFrame = null;
-    renderHotspotMarkers();
+    renderHotspotMarkers(true);
   });
 }
 
 function startMarkerLoop() {
   if (markerLoopId) return;
-  const loop = (timestamp) => {
+  const loop = () => {
     markerLoopId = requestAnimationFrame(loop);
     renderHotspotMarkers();
   };
   markerLoopId = requestAnimationFrame(loop);
 }
 
-function renderHotspotMarkers() {
+function renderHotspotMarkers(force = false) {
   if (!hotspotOverlay) return;
-  hotspotOverlay.innerHTML = '';
   const scene = getSelectedScene();
   const active = editorScenes.get(state.selectedSceneId);
-  if (!scene || !active) return;
+  if (!scene || !active) {
+    clearHotspotMarkerElements();
+    return;
+  }
 
-  const viewWidth = active.view.width();
-  const viewHeight = active.view.height();
+  if (hotspotMarkerSceneId !== scene.id) {
+    clearHotspotMarkerElements();
+    hotspotMarkerSceneId = scene.id;
+  }
 
-  scene.hotspots.forEach((hotspot) => {
-    const coords = active.view.coordinatesToScreen({ yaw: hotspot.yaw, pitch: hotspot.pitch }, {});
-    if (!coords || coords.x === null || coords.y === null) return;
-    if (coords.x < 0 || coords.y < 0 || coords.x > viewWidth || coords.y > viewHeight) return;
-    const scale = getViewScale(active);
+  const renderSignature = makeMarkerRenderSignature(scene, active);
+  if (!force && renderSignature === lastMarkerRenderSignature && !draggingHotspotId) {
+    return;
+  }
+  lastMarkerRenderSignature = renderSignature;
 
-    const marker = document.createElement('div');
-    marker.className = `hotspot-marker${hotspot.id === state.selectedHotspotId ? ' active' : ''}`;
-    marker.style.left = `${coords.x / scale.x}px`;
-    marker.style.top = `${coords.y / scale.y - 5}px`;
-    const linkTarget = getHotspotSceneLinkTarget(hotspot);
-    marker.title = linkTarget ? `Go to "${linkTarget.name || linkTarget.id}"` : (hotspot.title || hotspot.id);
-    marker.dataset.hotspotId = hotspot.id;
-    marker.addEventListener('pointerdown', (event) => startMarkerDrag(event, hotspot.id));
-    hotspotOverlay.appendChild(marker);
+  const scale = getViewScale(active);
+  const sceneHotspotIds = new Set((scene.hotspots || []).map((hotspot) => hotspot.id));
+  sceneHotspotIds.forEach((hotspotId) => {
+    if (!hotspotMarkerElements.has(hotspotId)) {
+      buildHotspotMarkerElement(hotspotId);
+    }
+  });
+
+  hotspotMarkerElements.forEach((marker, hotspotId) => {
+    if (!sceneHotspotIds.has(hotspotId)) {
+      marker.remove();
+      hotspotMarkerElements.delete(hotspotId);
+      return;
+    }
+    const hotspot = scene.hotspots.find((item) => item.id === hotspotId);
+    if (!hotspot) return;
+    updateHotspotMarkerElement(marker, hotspot, active, scale);
   });
 }
 
@@ -936,6 +1875,14 @@ function startMarkerDrag(event, hotspotId) {
   if (!event.isPrimary || event.button !== 0) return;
   event.preventDefault();
   event.stopPropagation();
+  if (state.selectedHotspotId !== hotspotId) {
+    state.selectedHotspotId = hotspotId;
+    renderHotspotList();
+    renderLinkEditor();
+    renderContentBlocks();
+    renderIconOptions();
+    scheduleMarkerRender();
+  }
   draggingHotspotId = hotspotId;
   dragMoved = false;
   dragPointerId = event.pointerId;
@@ -968,9 +1915,21 @@ function stopMarkerDrag(event) {
   hotspotOverlay.removeEventListener('pointermove', handleMarkerDrag);
   hotspotOverlay.removeEventListener('pointerup', stopMarkerDrag);
   hotspotOverlay.removeEventListener('pointercancel', stopMarkerDrag);
-  if (draggingHotspotId) {
+  const draggedId = draggingHotspotId;
+  if (draggedId && dragMoved) {
     autosave();
     updateStatus('Hotspot position updated.');
+  } else if (draggedId && placementMode) {
+    const scene = getSelectedScene();
+    const hotspot = scene?.hotspots?.find((item) => item.id === draggedId) || null;
+    if (hotspot && isSceneLinkHotspot(hotspot)) {
+      state.selectedHotspotId = draggedId;
+      renderHotspotList();
+      renderLinkEditor();
+      renderContentBlocks();
+      renderIconOptions();
+      updateStatus(`Link ${hotspot.linkCode || hotspot.title || hotspot.id} selected.`);
+    }
   }
   draggingHotspotId = null;
   dragPointerId = null;
@@ -1053,9 +2012,12 @@ function openHotspotPreview(hotspotId) {
     }
 
     if (block.type === 'scene') {
+      const targetScene = state.project?.scenes?.find((sceneItem) => sceneItem.id === block.sceneId) || null;
       const targetSceneName = getSceneName(block.sceneId || '');
       const p = document.createElement('p');
-      p.textContent = block.sceneId ? `Go to scene: ${targetSceneName}` : 'No target scene selected.';
+      const sceneAlias = String(targetScene?.alias || '').trim();
+      const targetText = sceneAlias || targetSceneName;
+      p.textContent = block.sceneId ? `Go to: ${targetText}` : 'No target scene selected.';
       wrapper.appendChild(p);
       if (block.comment && String(block.comment).trim()) {
         const comment = document.createElement('p');
@@ -1077,15 +2039,81 @@ function closeHotspotPreview() {
   previewModal.setAttribute('aria-hidden', 'true');
 }
 
+function setSectionCollapsed(buttonElement, bodyElement, next) {
+  if (!buttonElement || !bodyElement) return;
+  const collapsed = Boolean(next);
+  bodyElement.classList.toggle('collapsed', collapsed);
+  buttonElement.textContent = collapsed ? 'Show' : 'Hide';
+  buttonElement.setAttribute('aria-expanded', String(!collapsed));
+}
+
+function toggleSection(buttonElement, bodyElement) {
+  if (!buttonElement || !bodyElement) return;
+  const isCollapsed = bodyElement.classList.contains('collapsed');
+  setSectionCollapsed(buttonElement, bodyElement, !isCollapsed);
+}
+
+function setLinksPanelCollapsed(next) {
+  setSectionCollapsed(btnToggleLinksPanel, linksPanelBody, next);
+}
+
+function openDeleteLinksScopeModal() {
+  if (!deleteLinksScopeModal) return;
+  deleteLinksScopeModal.classList.add('visible');
+  deleteLinksScopeModal.setAttribute('aria-hidden', 'false');
+}
+
+function closeDeleteLinksScopeModal() {
+  if (!deleteLinksScopeModal) return;
+  deleteLinksScopeModal.classList.remove('visible');
+  deleteLinksScopeModal.setAttribute('aria-hidden', 'true');
+}
+
+function resolveDeleteLinksScope(value) {
+  if (!deleteLinksScopeResolver) return;
+  const resolver = deleteLinksScopeResolver;
+  deleteLinksScopeResolver = null;
+  closeDeleteLinksScopeModal();
+  resolver(value);
+}
+
+function askDeleteLinksScope() {
+  if (!deleteLinksScopeModal || !btnDeleteLinksScene || !btnDeleteLinksGroup || !btnDeleteLinksCancel) {
+    const scopeInput = prompt('Type "scene" to delete all links in the current scene, or "group" to delete all links in the current group.');
+    if (scopeInput === null) return Promise.resolve(null);
+    const scope = String(scopeInput).trim().toLowerCase();
+    if (scope !== 'scene' && scope !== 'group') return Promise.resolve('__invalid__');
+    return Promise.resolve(scope);
+  }
+  return new Promise((resolve) => {
+    deleteLinksScopeResolver = resolve;
+    openDeleteLinksScopeModal();
+  });
+}
+
 function updatePlacementButtonLabel() {
   if (!btnTogglePlacement) return;
   btnTogglePlacement.textContent = placementMode ? 'Done' : 'Edit';
 }
 
+function clearPendingSceneLinkDraft(shouldRender = true) {
+  pendingSceneLinkDraft = null;
+  if (!shouldRender) return;
+  renderHotspotList();
+  renderLinkEditor();
+  renderContentBlocks();
+  scheduleMarkerRender();
+}
+
 function togglePlacementMode() {
+  const wasPlacementMode = placementMode;
+  const hadPendingBeforeToggle = Boolean(pendingSceneLinkDraft);
   placementMode = !placementMode;
   btnTogglePlacement.classList.toggle('active', placementMode);
   updatePlacementButtonLabel();
+  if (wasPlacementMode && !placementMode && hadPendingBeforeToggle) {
+    clearPendingSceneLinkDraft(true);
+  }
   renderLinkEditor();
   viewerCanvas.classList.toggle('placement-mode', placementMode);
   if (placementMode) {
@@ -1093,8 +2121,8 @@ function togglePlacementMode() {
   }
   updateStatus(
     placementMode
-      ? 'Edit mode enabled. Rotate panorama and click to place the selected link hotspot.'
-      : 'Edit mode disabled.'
+      ? 'Edit mode enabled. Drag links or double-click panorama to place/move links.'
+      : (hadPendingBeforeToggle ? 'Pending link cancelled.' : 'Edit mode disabled.')
   );
 }
 
@@ -1124,6 +2152,7 @@ function findMarkerAtScreen(clientX, clientY, radius) {
   let closestId = null;
   let closestDist = radius * radius;
   markers.forEach((marker) => {
+    if (marker.style.display === 'none') return;
     const rect = marker.getBoundingClientRect();
     const cx = rect.left + rect.width / 2;
     const cy = rect.top + rect.height / 2;
@@ -1140,9 +2169,6 @@ function findMarkerAtScreen(clientX, clientY, radius) {
 
 
 function renderHotspotList() {
-  if (hotspotList) {
-    hotspotList.innerHTML = '';
-  }
   if (linkSelect) {
     linkSelect.innerHTML = '';
   }
@@ -1165,12 +2191,23 @@ function renderHotspotList() {
   }
 
   const linkHotspots = getSceneLinkHotspots(scene);
+  const pendingForScene = pendingSceneLinkDraft && pendingSceneLinkDraft.sceneId === scene.id
+    ? pendingSceneLinkDraft
+    : null;
 
   if (linkSelect) {
     const placeholder = document.createElement('option');
     placeholder.value = '';
     placeholder.textContent = linkHotspots.length ? 'Select link' : 'No links in this scene';
     linkSelect.appendChild(placeholder);
+
+    if (pendingForScene) {
+      const pendingOption = document.createElement('option');
+      pendingOption.value = '__pending__';
+      pendingOption.textContent = `${pendingForScene.linkCode} (new)`;
+      pendingOption.selected = true;
+      linkSelect.appendChild(pendingOption);
+    }
 
     linkHotspots.forEach((hotspot) => {
       const option = document.createElement('option');
@@ -1183,33 +2220,16 @@ function renderHotspotList() {
     });
 
     const selectedIsLink = linkHotspots.some((hotspot) => hotspot.id === state.selectedHotspotId);
-    if (!selectedIsLink) {
+    if (!selectedIsLink && !pendingForScene) {
       linkSelect.value = '';
     }
-    linkSelect.disabled = linkHotspots.length === 0;
+    linkSelect.disabled = linkHotspots.length === 0 && !pendingForScene;
   }
   if (btnDeleteSceneLink) {
     btnDeleteSceneLink.disabled = linkHotspots.length === 0;
   }
   if (btnRemoveAllLinks) {
     btnRemoveAllLinks.disabled = linkHotspots.length === 0;
-  }
-
-  if (hotspotList) {
-    scene.hotspots.forEach((hotspot) => {
-      const button = document.createElement('button');
-      button.className = `list-item${hotspot.id === state.selectedHotspotId ? ' active' : ''}`;
-      button.textContent = hotspot.title || hotspot.id;
-      button.addEventListener('click', () => {
-        state.selectedHotspotId = hotspot.id;
-        renderLinkEditor();
-        renderContentBlocks();
-        renderIconOptions();
-        renderHotspotList();
-        scheduleMarkerRender();
-      });
-      hotspotList.appendChild(button);
-    });
   }
 
   scheduleMarkerRender();
@@ -1259,21 +2279,49 @@ function renderMediaList() {
 }
 
 function renderFloorplans() {
-  floorplanList.innerHTML = '';
+  stopFloorplanPan();
   const group = getSelectedGroup();
+  const setFloorplanControlsState = ({ hasFloorplan = false, hasSceneSelection = false } = {}) => {
+    if (btnFloorplanPlaceScene) btnFloorplanPlaceScene.disabled = !hasFloorplan || !hasSceneSelection;
+    if (btnFloorplanEdit) btnFloorplanEdit.disabled = !hasFloorplan;
+    if (btnFloorplanSelectAll) btnFloorplanSelectAll.disabled = true;
+    if (btnFloorplanDeleteNode) btnFloorplanDeleteNode.disabled = true;
+    if (btnFloorplanToggleLabels) btnFloorplanToggleLabels.disabled = !hasFloorplan;
+    if (btnFloorplanZoomReset) btnFloorplanZoomReset.disabled = !hasFloorplan;
+  };
   if (!group) {
-    miniMap.innerHTML = '<div class="mini-map-placeholder">No group selected</div>';
+    miniMap.classList.remove('has-floorplan');
+    miniMap.classList.remove('floorplan-pan-enabled');
+    miniMap.innerHTML = '<div class="mini-map-placeholder"></div>';
+    setFloorplanControlsState();
+    setFloorplanPlaceMode(false);
+    setFloorplanEditMode(false);
+    updateFloorplanColorPaletteUi();
     return;
   }
 
   const selected = getSelectedFloorplan();
+  const hasSceneSelection = Boolean(getSelectedScene());
   state.selectedFloorplanId = selected?.id || null;
   miniMap.innerHTML = '';
   if (!selected) {
-    miniMap.innerHTML = '<div class="mini-map-placeholder">No floorplan for this group yet</div>';
+    miniMap.classList.remove('has-floorplan');
+    miniMap.classList.remove('floorplan-pan-enabled');
+    miniMap.innerHTML = '<div class="mini-map-placeholder"></div>';
+    setFloorplanControlsState();
+    setFloorplanPlaceMode(false);
+    setFloorplanEditMode(false);
+    updateFloorplanColorPaletteUi();
   } else {
+  miniMap.classList.add('has-floorplan');
+  miniMap.classList.toggle('floorplan-pan-enabled', !floorplanPlaceMode);
+  setFloorplanControlsState({ hasFloorplan: true, hasSceneSelection });
+  if (!hasSceneSelection) {
+    setFloorplanPlaceMode(false);
+  }
   const canvas = document.createElement('div');
   canvas.className = 'floorplan-canvas';
+  canvas.style.setProperty('--floorplan-zoom', String(getFloorplanZoom(group.id)));
 
   const img = document.createElement('img');
   img.className = 'floorplan-image';
@@ -1282,65 +2330,75 @@ function renderFloorplans() {
   canvas.appendChild(img);
 
   const nodes = selected?.nodes || [];
+  const selectedSceneIds = new Set(
+    (state.multiSelectedSceneIds || []).filter((sceneId) =>
+      (state.project?.scenes || []).some((scene) => scene.id === sceneId && scene.groupId === group.id)
+    )
+  );
+  if (!selectedSceneIds.size && state.selectedSceneId) {
+    selectedSceneIds.add(state.selectedSceneId);
+  }
   nodes.forEach((node, index) => {
     const dot = document.createElement('div');
-    dot.className = `floorplan-node${node.sceneId === state.selectedSceneId ? ' active' : ''}`;
+    const isActive = floorplanSelectAllMode || selectedSceneIds.has(node.sceneId);
+    dot.className = `floorplan-node${isActive ? ' active' : ''}`;
     dot.style.left = `${node.x * 100}%`;
     dot.style.top = `${node.y * 100}%`;
-    dot.title = node.sceneId;
     dot.dataset.index = String(index);
-
-    const arrow = document.createElement('div');
-    arrow.className = 'arrow';
-    arrow.style.transform = `rotate(${node.rotation || 0}deg)`;
-    dot.appendChild(arrow);
+    applyFloorplanNodeColorStyles(dot, node.colorKey || selected.markerColorKey);
 
     const label = document.createElement('div');
     label.className = 'floorplan-label';
+    if (floorplanShowLabels) {
+      label.classList.add('visible');
+    }
     label.textContent = getSceneName(node.sceneId);
     dot.appendChild(label);
 
     dot.addEventListener('mousedown', (event) => startDrag(event, index));
-    dot.addEventListener('click', (event) => event.stopPropagation());
-    dot.addEventListener('wheel', (event) => {
-      event.preventDefault();
-      rotateFloorplanNode(index, event.deltaY > 0 ? 15 : -15);
+    dot.addEventListener('click', (event) => {
+      event.stopPropagation();
+      if (floorplanSelectAllMode) {
+        floorplanSelectAllMode = false;
+      }
+      if (state.selectedSceneId !== node.sceneId) {
+        selectScene(node.sceneId);
+      } else {
+        renderFloorplans();
+      }
     });
     dot.addEventListener('contextmenu', (event) => {
       event.preventDefault();
+      if (!floorplanEditMode) {
+        updateStatus('Enable Edit to modify map points.');
+        return;
+      }
       removeFloorplanNode(index);
     });
     canvas.appendChild(dot);
   });
 
   canvas.addEventListener('click', (event) => {
+    if (!floorplanPlaceMode) {
+      return;
+    }
     const rect = canvas.getBoundingClientRect();
     const x = (event.clientX - rect.left) / rect.width;
     const y = (event.clientY - rect.top) / rect.height;
-    addOrUpdateFloorplanNode(x, y);
+    addFloorplanNode(x, y);
   });
+  canvas.addEventListener('wheel', (event) => zoomFloorplanAt(event, group.id), { passive: false });
+  canvas.addEventListener('mousedown', startFloorplanPan);
 
   miniMap.appendChild(canvas);
   }
-
-  const groups = state.project?.groups || [];
-  groups.forEach((item) => {
-    const hasFloorplan = Boolean(getFloorplanForGroup(item.id));
-    const button = document.createElement('button');
-    button.className = `list-item${item.id === state.selectedGroupId ? ' active' : ''}`;
-    button.textContent = `${item.name}${hasFloorplan ? '' : ' (no floorplan)'}`;
-    button.addEventListener('click', () => {
-      state.selectedGroupId = item.id;
-      const groupScenes = getScenesForSelectedGroup();
-      state.selectedSceneId = groupScenes[0]?.id || null;
-      state.selectedHotspotId = groupScenes[0]?.hotspots?.[0]?.id || null;
-      renderAll();
-    });
-    floorplanList.appendChild(button);
-  });
+  updateFloorplanLabelToggleUi();
+  updateFloorplanColorPaletteUi();
+  updateFloorplanDeleteNodeUi();
+  updateFloorplanSelectAllUi();
 }
 
-function addOrUpdateFloorplanNode(x, y) {
+function addFloorplanNode(x, y) {
   const scene = getSelectedScene();
   const floorplan = getSelectedFloorplan();
   if (!scene || !floorplan) return;
@@ -1348,13 +2406,16 @@ function addOrUpdateFloorplanNode(x, y) {
 
   const existing = floorplan.nodes.find((node) => node.sceneId === scene.id);
   if (existing) {
-    existing.x = x;
-    existing.y = y;
-  } else {
-    floorplan.nodes.push({ sceneId: scene.id, x, y, rotation: 0 });
+    updateStatus(`Scene "${scene.name}" is already on the map.`);
+    return;
   }
+  const selectedColor = normalizeFloorplanColorKey(
+    floorplanColorSelect?.value || floorplan.markerColorKey || 'yellow'
+  );
+  floorplan.nodes.push({ sceneId: scene.id, x, y, rotation: 0, colorKey: selectedColor });
 
   renderFloorplans();
+  updateStatus(`Scene "${scene.name}" placed on map.`);
   autosave();
 }
 
@@ -1363,6 +2424,39 @@ function removeFloorplanNode(index) {
   if (!floorplan) return;
   floorplan.nodes.splice(index, 1);
   renderFloorplans();
+  autosave();
+}
+
+function deleteSelectedFloorplanNode() {
+  if (!floorplanEditMode) {
+    updateStatus('Enable Edit to delete map points.');
+    return;
+  }
+  const floorplan = getSelectedFloorplan();
+  if (!floorplan) return;
+  if (floorplanSelectAllMode) {
+    const total = (floorplan.nodes || []).length;
+    if (!total) {
+      updateStatus('No map points to delete.');
+      return;
+    }
+    floorplan.nodes = [];
+    floorplanSelectAllMode = false;
+    renderFloorplans();
+    updateStatus(`Deleted ${total} map point(s).`);
+    autosave();
+    return;
+  }
+  const scene = getSelectedScene();
+  if (!scene) return;
+  const index = (floorplan.nodes || []).findIndex((node) => node.sceneId === scene.id);
+  if (index === -1) {
+    updateStatus('Selected scene is not placed on the map.');
+    return;
+  }
+  floorplan.nodes.splice(index, 1);
+  renderFloorplans();
+  updateStatus(`Map point removed for scene "${scene.name}".`);
   autosave();
 }
 
@@ -1379,6 +2473,9 @@ function rotateFloorplanNode(index, delta) {
 
 function startDrag(event, index) {
   event.stopPropagation();
+  if (!floorplanEditMode) {
+    return;
+  }
   const floorplan = getSelectedFloorplan();
   if (!floorplan) return;
   dragState = { index, floorplanId: floorplan.id };
@@ -1561,9 +2658,11 @@ function createSceneRecord(name = 'New Scene', groupId = null) {
     id,
     groupId: groupId || state.selectedGroupId || state.project?.groups?.[0]?.id || null,
     name,
+    alias: '',
+    comment: '',
     levels: [{ tileSize: 256, size: 256, fallbackOnly: true }],
     faceSize: 2048,
-    initialViewParameters: { yaw: 0, pitch: 0, fov: 1.4 },
+    initialViewParameters: { yaw: 0, pitch: 0, fov: getSelectedSceneFov() },
     orientationSaved: false,
     hotspots: []
   };
@@ -1610,12 +2709,30 @@ function ensureMainSceneForGroup(groupId, candidateSceneId = null) {
   }
 }
 
+function normalizeGroupName(name) {
+  return String(name || '').trim().toLowerCase();
+}
+
+function hasDuplicateGroupName(nextName, currentGroupId = null) {
+  const normalized = normalizeGroupName(nextName);
+  if (!normalized) return false;
+  return (state.project?.groups || []).some((group) =>
+    group.id !== currentGroupId && normalizeGroupName(group.name) === normalized
+  );
+}
+
 function addGroup() {
   const name = prompt('Group name');
   if (!name) return;
+  const trimmedName = name.trim() || 'New Group';
+  if (hasDuplicateGroupName(trimmedName)) {
+    alert(`Group name "${trimmedName}" already exists. Choose a different name.`);
+    updateStatus(`Group not created: "${trimmedName}" already exists.`);
+    return;
+  }
   const group = {
     id: `group-${Date.now()}-${Math.floor(Math.random() * 100000)}`,
-    name: name.trim() || 'New Group',
+    name: trimmedName,
     mainSceneId: null
   };
   state.project.groups.push(group);
@@ -1636,7 +2753,13 @@ function renameSelectedGroup() {
   }
   const nextName = prompt('Group name', group.name || '');
   if (nextName == null) return;
-  group.name = nextName.trim() || 'Untitled Group';
+  const trimmedName = nextName.trim() || 'Untitled Group';
+  if (hasDuplicateGroupName(trimmedName, group.id)) {
+    alert(`Group name "${trimmedName}" already exists. Choose a different name.`);
+    updateStatus(`Rename cancelled: "${trimmedName}" already exists.`);
+    return;
+  }
+  group.name = trimmedName;
   renderSceneGroupOptions();
   updateStatus(`Group renamed to "${group.name}".`);
   autosave();
@@ -1658,14 +2781,45 @@ function deleteGroupById(groupId) {
   if (!fallback) return;
   const scenesToDelete = (state.project.scenes || []).filter((scene) => scene.groupId === group.id);
   const sceneCount = scenesToDelete.length;
-  const confirmed = window.confirm(`Delete group "${group.name}" and delete ${sceneCount} images/scenes?`);
+  const deletedSceneIds = new Set(scenesToDelete.map((scene) => scene.id));
+  const floorplansForGroup = (state.project.minimap.floorplans || []).filter((fp) => fp.groupId === group.id);
+  const mapCount = floorplansForGroup.length;
+  const mapNodeCount = floorplansForGroup.reduce((total, fp) => total + ((fp.nodes || []).length), 0);
+  let inboundSceneLinkCount = 0;
+  (state.project.scenes || []).forEach((scene) => {
+    if (scene.groupId === group.id) return;
+    (scene.hotspots || []).forEach((hotspot) => {
+      (hotspot.contentBlocks || []).forEach((block) => {
+        if (block.type === 'scene' && deletedSceneIds.has(block.sceneId)) {
+          inboundSceneLinkCount += 1;
+        }
+      });
+    });
+  });
+
+  const warningLines = [
+    `Delete group "${group.name}"?`,
+    '',
+    'This action will:',
+    `- Delete ${sceneCount} image/scene(s) in this group`,
+    mapCount ? `- Delete ${mapCount} map file(s) linked to this group` : '- No map file linked to this group',
+    mapNodeCount ? `- Remove ${mapNodeCount} map point(s)` : '- No map points to remove',
+    inboundSceneLinkCount
+      ? `- Remove ${inboundSceneLinkCount} scene-link reference(s) from other groups/scenes`
+      : '- No incoming scene-link references from other groups/scenes',
+    '',
+    'This cannot be undone.'
+  ];
+  const confirmed = window.confirm(warningLines.join('\n'));
   if (!confirmed) return;
 
   scenesToDelete.forEach((scene) => {
     generatedTiles.delete(scene.id);
     editorScenes.delete(scene.id);
   });
-  const deletedSceneIds = new Set(scenesToDelete.map((scene) => scene.id));
+  if (pendingSceneLinkDraft && deletedSceneIds.has(pendingSceneLinkDraft.sceneId)) {
+    clearPendingSceneLinkDraft(false);
+  }
   state.project.scenes = (state.project.scenes || []).filter((scene) => !deletedSceneIds.has(scene.id));
   clearSceneTargetReferences(deletedSceneIds);
 
@@ -1687,6 +2841,9 @@ function deleteSceneById(sceneId) {
   const sceneIndex = state.project.scenes.findIndex((scene) => scene.id === sceneId);
   if (sceneIndex === -1) return;
   const [removed] = state.project.scenes.splice(sceneIndex, 1);
+  if (pendingSceneLinkDraft?.sceneId === removed?.id) {
+    clearPendingSceneLinkDraft(false);
+  }
   if (removed?.id) {
     generatedTiles.delete(removed.id);
     editorScenes.delete(removed.id);
@@ -1704,6 +2861,70 @@ function deleteSceneById(sceneId) {
   state.selectedSceneId = fallbackScene?.id || null;
   state.selectedHotspotId = fallbackScene?.hotspots?.[0]?.id || null;
   renderAll();
+  autosave();
+}
+
+function deleteSelectedScenes() {
+  if (!state.project?.scenes?.length) {
+    updateStatus('No scenes available.');
+    return;
+  }
+
+  const selectedIds = new Set(
+    (state.multiSelectedSceneIds || [])
+      .filter(Boolean)
+      .filter((sceneId) => state.project.scenes.some((scene) => scene.id === sceneId))
+  );
+  if (!selectedIds.size && state.selectedSceneId) {
+    selectedIds.add(state.selectedSceneId);
+  }
+  if (!selectedIds.size) {
+    updateStatus('Select at least one scene.');
+    return;
+  }
+
+  const scenesToDelete = (state.project.scenes || []).filter((scene) => selectedIds.has(scene.id));
+  if (!scenesToDelete.length) {
+    updateStatus('Select at least one scene.');
+    return;
+  }
+
+  const deletedSceneIds = new Set(scenesToDelete.map((scene) => scene.id));
+  const confirmed = window.confirm(
+    `Delete ${scenesToDelete.length} selected scene(s)? This removes their tiles and map points, and clears links targeting them. This cannot be undone.`
+  );
+  if (!confirmed) return;
+
+  if (pendingSceneLinkDraft && deletedSceneIds.has(pendingSceneLinkDraft.sceneId)) {
+    clearPendingSceneLinkDraft(false);
+  }
+
+  scenesToDelete.forEach((scene) => {
+    generatedTiles.delete(scene.id);
+    editorScenes.delete(scene.id);
+  });
+
+  state.project.scenes = (state.project.scenes || []).filter((scene) => !deletedSceneIds.has(scene.id));
+  clearSceneTargetReferences(deletedSceneIds);
+
+  (state.project?.minimap?.floorplans || []).forEach((floorplan) => {
+    floorplan.nodes = (floorplan.nodes || []).filter((node) => !deletedSceneIds.has(node.sceneId));
+  });
+
+  const affectedGroups = new Set(scenesToDelete.map((scene) => scene.groupId).filter(Boolean));
+  affectedGroups.forEach((groupId) => ensureMainSceneForGroup(groupId));
+
+  const fallbackScene =
+    getPreferredSceneForGroup(state.selectedGroupId) ||
+    state.project.scenes[0] ||
+    null;
+  state.selectedSceneId = fallbackScene?.id || null;
+  state.selectedHotspotId = fallbackScene?.hotspots?.[0]?.id || null;
+  state.multiSelectedSceneIds = state.selectedSceneId ? [state.selectedSceneId] : [];
+  state.sceneSelectionAnchorId = state.selectedSceneId || null;
+
+  renderAll();
+  updateStatus(`Deleted ${scenesToDelete.length} selected scene(s).`);
   autosave();
 }
 
@@ -1747,32 +2968,52 @@ function clearSceneTargetReferences(deletedSceneIds) {
 }
 
 function deleteAllScenes() {
-  const total = state.project?.scenes?.length || 0;
-  if (!total) {
-    updateStatus('No scenes to delete.');
+  const group = getSelectedGroup();
+  if (!group) {
+    updateStatus('Select a group first.');
     return;
   }
-  const confirmed = window.confirm(`Delete all ${total} scenes? This cannot be undone.`);
+
+  const scenesInGroup = (state.project?.scenes || []).filter((scene) => scene.groupId === group.id);
+  const total = scenesInGroup.length;
+  if (!total) {
+    updateStatus(`No images to delete in "${group.name}".`);
+    return;
+  }
+  const confirmed = window.confirm(`Delete all ${total} image(s) in group "${group.name}"? This cannot be undone.`);
   if (!confirmed) {
     return;
   }
 
-  state.project.scenes = [];
-  state.selectedSceneId = null;
-  state.selectedHotspotId = null;
-  (state.project.groups || []).forEach((group) => {
-    group.mainSceneId = null;
-  });
-  generatedTiles.clear();
-  editorScenes.clear();
+  const deletedSceneIds = new Set(scenesInGroup.map((scene) => scene.id));
+  if (pendingSceneLinkDraft && deletedSceneIds.has(pendingSceneLinkDraft.sceneId)) {
+    clearPendingSceneLinkDraft(false);
+  }
 
-  const floorplans = state.project?.minimap?.floorplans || [];
-  floorplans.forEach((floorplan) => {
-    floorplan.nodes = [];
+  state.project.scenes = (state.project.scenes || []).filter((scene) => !deletedSceneIds.has(scene.id));
+  clearSceneTargetReferences(deletedSceneIds);
+
+  scenesInGroup.forEach((scene) => {
+    generatedTiles.delete(scene.id);
+    editorScenes.delete(scene.id);
   });
+
+  const floorplans = (state.project?.minimap?.floorplans || []).filter((floorplan) => floorplan.groupId === group.id);
+  floorplans.forEach((floorplan) => {
+    floorplan.nodes = (floorplan.nodes || []).filter((node) => !deletedSceneIds.has(node.sceneId));
+  });
+
+  group.mainSceneId = null;
+  ensureMainSceneForGroup(group.id);
+
+  const fallbackScene = getPreferredSceneForGroup(group.id);
+  state.selectedSceneId = fallbackScene?.id || null;
+  state.selectedHotspotId = fallbackScene?.hotspots?.[0]?.id || null;
+  state.multiSelectedSceneIds = state.selectedSceneId ? [state.selectedSceneId] : [];
+  state.sceneSelectionAnchorId = state.selectedSceneId || null;
 
   renderAll();
-  updateStatus(`Deleted ${total} scenes.`);
+  updateStatus(`Deleted ${total} image(s) from group "${group.name}".`);
   autosave();
 }
 
@@ -1802,15 +3043,62 @@ function createHotspotRecord(title, contentBlocks, extra = null) {
 }
 
 function getDefaultLinkTargetSceneId(currentScene) {
-  const allScenes = state.project?.scenes || [];
   if (!currentScene) return '';
-  const sameGroup = allScenes.find((item) => item.id !== currentScene.id && item.groupId === currentScene.groupId);
-  if (sameGroup) return sameGroup.id;
-  const anyOther = allScenes.find((item) => item.id !== currentScene.id);
-  return anyOther?.id || '';
+  const options = getLinkTargetSceneOptions(currentScene.id);
+  return options[0]?.id || '';
+}
+
+function normalizeLinkCode(value) {
+  const parsed = Number.parseInt(String(value || ''), 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) return '';
+  return String(parsed).padStart(4, '0');
+}
+
+function ensureUniqueSceneLinkCodes() {
+  if (!state.project) return 0;
+  const used = new Set();
+  let next = 1;
+  let changes = 0;
+
+  const reserve = (code) => {
+    used.add(code);
+    const numeric = Number.parseInt(code, 10);
+    if (Number.isFinite(numeric) && numeric >= next) {
+      next = numeric + 1;
+    }
+  };
+
+  (state.project.scenes || []).forEach((scene) => {
+    (scene.hotspots || []).forEach((hotspot) => {
+      if (!isSceneLinkHotspot(hotspot)) return;
+
+      let code = normalizeLinkCode(hotspot.linkCode || hotspot.title);
+      if (!code || used.has(code)) {
+        while (used.has(String(next).padStart(4, '0'))) {
+          next += 1;
+        }
+        code = String(next).padStart(4, '0');
+        next += 1;
+        changes += 1;
+      }
+
+      reserve(code);
+      if (hotspot.linkCode !== code) {
+        hotspot.linkCode = code;
+        changes += 1;
+      }
+      if (hotspot.title !== code) {
+        hotspot.title = code;
+        changes += 1;
+      }
+    });
+  });
+
+  return changes;
 }
 
 function getNextSceneLinkCode() {
+  ensureUniqueSceneLinkCodes();
   let maxCode = 0;
   (state.project?.scenes || []).forEach((scene) => {
     (scene.hotspots || []).forEach((hotspot) => {
@@ -1887,28 +3175,36 @@ function addSceneLinkBlock() {
     return;
   }
 
+  if (pendingSceneLinkDraft && pendingSceneLinkDraft.sceneId !== scene.id) {
+    clearPendingSceneLinkDraft(false);
+  }
+
+  if (pendingSceneLinkDraft && pendingSceneLinkDraft.sceneId === scene.id) {
+    renderHotspotList();
+    renderLinkEditor();
+    updateStatus(`Link ${pendingSceneLinkDraft.linkCode} is not placed yet. Double-click to place it first, or press Done to cancel.`);
+    return;
+  }
+
   const targetSceneId = getDefaultLinkTargetSceneId(scene);
   const linkCode = getNextSceneLinkCode();
-  const hotspot = createHotspotRecord(
+  pendingSceneLinkDraft = {
+    sceneId: scene.id,
     linkCode,
-    [{ type: 'scene', sceneId: targetSceneId, comment: '' }],
-    { linkCode }
-  );
-  scene.hotspots.push(hotspot);
-  state.selectedHotspotId = hotspot.id;
-  // Avoid renderAll() here: it triggers switchEditorScene() and resets current view orientation.
+    targetSceneId,
+    comment: '',
+    linkColorKey: normalizeSceneLinkColorKey(state.newLinkColorKey)
+  };
+  state.selectedHotspotId = null;
+
+  if (!placementMode) {
+    togglePlacementMode();
+  }
   renderHotspotList();
   renderLinkEditor();
   renderContentBlocks();
   renderIconOptions();
-  renderMediaList();
-  renderFloorplans();
-  scheduleMarkerRender();
-  if (!placementMode) {
-    togglePlacementMode();
-  }
-  updateStatus('Link hotspot created. Click the preview to place it.');
-  autosave();
+  updateStatus(`New link ${linkCode} ready. Double-click on the panorama to place it. Press Done to cancel.`);
 }
 
 function deleteSceneLinkBlock() {
@@ -1953,24 +3249,90 @@ function deleteSceneLinkBlock() {
   autosave();
 }
 
-function removeAllSceneLinksForCurrentScene() {
-  const scene = getSelectedScene();
-  if (!scene) {
-    updateStatus('Select a scene first.');
+async function removeAllSceneLinksForCurrentScene() {
+  const scope = await askDeleteLinksScope();
+  if (scope === null) {
+    updateStatus('Delete All cancelled.');
+    return;
+  }
+  if (scope !== 'scene' && scope !== 'group') {
+    updateStatus('Invalid choice. Type exactly "scene" or "group".');
     return;
   }
 
-  const before = (scene.hotspots || []).length;
-  scene.hotspots = (scene.hotspots || []).filter((hotspot) => !isSceneLinkHotspot(hotspot));
-  const removed = before - scene.hotspots.length;
+  const removeLinksFromScene = (scene) => {
+    if (!scene) return 0;
+    const before = (scene.hotspots || []).length;
+    scene.hotspots = (scene.hotspots || []).filter((hotspot) => !isSceneLinkHotspot(hotspot));
+    return before - scene.hotspots.length;
+  };
+
+  if (scope === 'scene') {
+    const scene = getSelectedScene();
+    if (!scene) {
+      updateStatus('Select a scene first.');
+      return;
+    }
+    if (pendingSceneLinkDraft?.sceneId === scene.id) {
+      clearPendingSceneLinkDraft(false);
+    }
+    const removed = removeLinksFromScene(scene);
+    if (!removed) {
+      updateStatus('No links to remove in current scene.');
+      return;
+    }
+    state.selectedHotspotId = scene.hotspots[0]?.id || null;
+    renderAll();
+    updateStatus(`Removed ${removed} link(s) from current scene.`);
+    autosave();
+    return;
+  }
+
+  const groupId = state.selectedGroupId;
+  if (!groupId) {
+    updateStatus('Select a group first.');
+    return;
+  }
+  const groupScenes = (state.project?.scenes || []).filter((scene) => scene.groupId === groupId);
+  if (!groupScenes.length) {
+    updateStatus('No scenes in current group.');
+    return;
+  }
+  const existingLinksInGroup = groupScenes.reduce((total, scene) => {
+    return total + getSceneLinkHotspots(scene).length;
+  }, 0);
+  if (!existingLinksInGroup) {
+    updateStatus('No links to remove in current group.');
+    return;
+  }
+  const confirmDeleteGroupLinks = window.confirm(
+    `Delete all ${existingLinksInGroup} link(s) in current group? This cannot be undone.`
+  );
+  if (!confirmDeleteGroupLinks) {
+    updateStatus('Delete All cancelled.');
+    return;
+  }
+  if (pendingSceneLinkDraft) {
+    const pendingScene = state.project?.scenes?.find((scene) => scene.id === pendingSceneLinkDraft.sceneId);
+    if (pendingScene?.groupId === groupId) {
+      clearPendingSceneLinkDraft(false);
+    }
+  }
+
+  let removed = 0;
+  groupScenes.forEach((scene) => {
+    removed += removeLinksFromScene(scene);
+  });
+
   if (!removed) {
-    updateStatus('No links to remove in this scene.');
+    updateStatus('No links to remove in current group.');
     return;
   }
 
-  state.selectedHotspotId = scene.hotspots[0]?.id || null;
+  const selectedScene = getSelectedScene();
+  state.selectedHotspotId = selectedScene?.hotspots?.[0]?.id || null;
   renderAll();
-  updateStatus(`Removed ${removed} link(s) from current scene.`);
+  updateStatus(`Removed ${removed} link(s) from current group.`);
   autosave();
 }
 
@@ -1981,15 +3343,159 @@ function removeBlock(index) {
   renderContentBlocks();
 }
 
+function clampFov(value) {
+  return Math.max(0.1, Math.min(Math.PI - 0.01, value));
+}
+
+function getSelectedSceneFov() {
+  const scene = getSelectedScene();
+  const sceneValue = Number(scene?.initialViewParameters?.fov);
+  if (Number.isFinite(sceneValue)) {
+    return clampFov(sceneValue);
+  }
+  const inputValue = Number(projectFovInput?.value);
+  if (Number.isFinite(inputValue)) {
+    return clampFov(inputValue);
+  }
+  return 1.4;
+}
+
+function applySelectedSceneFov(fov) {
+  const scene = getSelectedScene();
+  if (!scene) return;
+  const safeFov = clampFov(fov);
+
+  scene.initialViewParameters = {
+    yaw: Number(scene.initialViewParameters?.yaw) || 0,
+    pitch: Number(scene.initialViewParameters?.pitch) || 0,
+    fov: safeFov
+  };
+  const sceneEntry = editorScenes.get(scene.id);
+  if (sceneEntry?.data) {
+    sceneEntry.data.initialViewParameters = { ...scene.initialViewParameters };
+  }
+
+  const active = editorScenes.get(scene.id);
+  if (active?.view) {
+    const current = active.view.parameters ? active.view.parameters() : active.data?.initialViewParameters;
+    active.view.setParameters({
+      yaw: Number(current?.yaw) || 0,
+      pitch: Number(current?.pitch) || 0,
+      fov: safeFov
+    });
+    scheduleMarkerRender();
+  }
+}
+
+function updateProjectFov(value, { commit = false } = {}) {
+  const scene = getSelectedScene();
+  if (!scene) return;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    if (commit && projectFovInput) {
+      projectFovInput.value = String(Number(getSelectedSceneFov().toFixed(2)));
+    }
+    return;
+  }
+
+  const safeFov = clampFov(parsed);
+  applySelectedSceneFov(safeFov);
+
+  if (commit && projectFovInput) {
+    projectFovInput.value = String(Number(safeFov.toFixed(2)));
+    updateStatus(`Scene FOV set to ${safeFov.toFixed(2)}.`);
+    autosave();
+  }
+}
+
 function updateProjectName(value) {
   if (!state.project) return;
   state.project.project.name = value;
   autosave();
 }
 
+function createResetProjectPayload() {
+  const now = new Date().toISOString();
+  const source = state.project || fallbackProject;
+  return {
+    project: {
+      name: source?.project?.name || 'Sample Tour',
+      version: source?.project?.version || '1.0',
+      createdAt: source?.project?.createdAt || now,
+      updatedAt: now
+    },
+    settings: {
+      ...(source?.settings || fallbackProject.settings || {})
+    },
+    groups: [
+      {
+        id: `group-${Date.now()}`,
+        name: 'Main Group',
+        mainSceneId: null
+      }
+    ],
+    scenes: [],
+    assets: {
+      icons: [],
+      media: []
+    },
+    minimap: {
+      enabled: false,
+      image: '',
+      nodes: [],
+      floorplans: []
+    }
+  };
+}
+
+function resetProjectWithConfirmation() {
+  if (!state.project) return;
+  const warningMessage = [
+    'Project reset will permanently remove:',
+    '- all scenes and groups content',
+    '- all generated tiles',
+    '- all hotspots and links',
+    '- all map/floorplan data',
+    '- all uploaded media and icons',
+    '',
+    'Type "reset" to continue:'
+  ].join('\n');
+  const input = window.prompt(warningMessage);
+  if (input === null) {
+    updateStatus('Project reset cancelled.');
+    return;
+  }
+  if (String(input).trim().toLowerCase() !== 'reset') {
+    updateStatus('Project reset aborted (confirmation word mismatch).');
+    return;
+  }
+
+  if (tilerWorker && activeTilingRequestId) {
+    tilerWorker.postMessage({ type: 'cancel', requestId: activeTilingRequestId });
+    activeTilingRequestId = null;
+    tilingPaused = false;
+    showProgress(0, true);
+  }
+
+  generatedTiles.clear();
+  editorScenes.clear();
+  clearPendingSceneLinkDraft(false);
+  clearHotspotMarkerElements();
+  hideHotspotHoverCard();
+
+  const payload = createResetProjectPayload();
+  loadProject(payload);
+  autosave();
+  updateStatus('Project reset complete.');
+}
+
 function handleResize() {
-  if (!editorViewer) return;
-  editorViewer.updateSize();
+  if (editorViewer) {
+    editorViewer.updateSize();
+  }
+  if (floorplanMapWindowOpen) {
+    updateMapWindowBounds();
+  }
 }
 
 function exportProject() {
@@ -2295,7 +3801,8 @@ function uploadFloorplanFile(file) {
       groupId: group.id,
       name: file.name,
       dataUrl: reader.result,
-      nodes: existing?.nodes || []
+      nodes: existing?.nodes || [],
+      markerColorKey: normalizeFloorplanColorKey(existing?.markerColorKey || 'yellow')
     };
     state.project.minimap.floorplans = (state.project.minimap.floorplans || []).filter((fp) => fp.groupId !== group.id);
     state.project.minimap.floorplans.push(next);
@@ -2312,9 +3819,15 @@ function deleteFloorplan() {
   const floorplans = state.project.minimap.floorplans || [];
   const index = floorplans.findIndex((fp) => fp.groupId === group.id);
   if (index === -1) return;
+  const confirmed = window.confirm(`Delete map for group "${group.name}"?`);
+  if (!confirmed) {
+    updateStatus('Map delete cancelled.');
+    return;
+  }
   floorplans.splice(index, 1);
   state.selectedFloorplanId = null;
   renderFloorplans();
+  updateStatus(`Map deleted for group "${group.name}".`);
   autosave();
 }
 
@@ -2334,6 +3847,28 @@ function readFileAsDataUrl(file) {
   });
 }
 
+function readFileAsArrayBuffer(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+async function computeFileHash(file) {
+  try {
+    if (!window.crypto?.subtle) return '';
+    const buffer = await readFileAsArrayBuffer(file);
+    const digest = await window.crypto.subtle.digest('SHA-256', buffer);
+    const bytes = new Uint8Array(digest);
+    return Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('');
+  } catch (error) {
+    console.warn('Hash generation failed:', error);
+    return '';
+  }
+}
+
 function readImageMetadata(dataUrl) {
   return new Promise((resolve) => {
     const image = new Image();
@@ -2343,40 +3878,350 @@ function readImageMetadata(dataUrl) {
   });
 }
 
-function applyPanoramaToScene(scene, file, dataUrl, meta) {
+function isDuplicatePanoramaInGroup(groupId, dataUrl, hash) {
+  const scenes = (state.project?.scenes || []).filter((scene) => scene.groupId === groupId);
+  return scenes.some((scene) => {
+    const source = scene.sourceImage;
+    if (!source) return false;
+    if (hash && source.hash && source.hash === hash) return true;
+    if (dataUrl && source.dataUrl && source.dataUrl === dataUrl) return true;
+    return false;
+  });
+}
+
+function normalizePanoramaFileName(name) {
+  return String(name || '').trim().toLowerCase();
+}
+
+function getDuplicateMatchesInOtherGroups(groupId, { dataUrl = '', hash = '', fileName = '' } = {}) {
+  const normalizedFileName = normalizePanoramaFileName(fileName);
+  const scenes = state.project?.scenes || [];
+  let matches = [];
+
+  if (hash) {
+    matches = scenes.filter((scene) =>
+      scene?.sourceImage &&
+      scene.groupId !== groupId &&
+      String(scene.sourceImage.hash || '').trim() === hash
+    );
+  }
+  if (!matches.length && dataUrl) {
+    matches = scenes.filter((scene) =>
+      scene?.sourceImage &&
+      scene.groupId !== groupId &&
+      scene.sourceImage.dataUrl &&
+      scene.sourceImage.dataUrl === dataUrl
+    );
+  }
+  if (!matches.length && normalizedFileName) {
+    matches = scenes.filter((scene) =>
+      scene?.sourceImage &&
+      scene.groupId !== groupId &&
+      normalizePanoramaFileName(scene.sourceImage.name) === normalizedFileName
+    );
+  }
+
+  const uniqueByScene = new Map();
+  matches.forEach((scene) => {
+    const group = getGroupById(scene.groupId);
+    uniqueByScene.set(scene.id, {
+      sceneId: scene.id,
+      sceneName: scene.name || scene.id,
+      groupId: scene.groupId,
+      groupName: group?.name || scene.groupId || 'Unknown Group'
+    });
+  });
+  return Array.from(uniqueByScene.values());
+}
+
+function findDuplicatePanoramaInOtherGroups(groupId, dataUrl, hash, fileName = '') {
+  const matches = getDuplicateMatchesInOtherGroups(groupId, { dataUrl, hash, fileName });
+  return matches[0] || null;
+}
+
+async function precomputeCrossGroupDuplicates(fileList, groupId) {
+  const duplicateByFile = new Map();
+  const hashByFile = new Map();
+  const dataUrlByFile = new Map();
+  const entries = [];
+
+  for (const file of fileList) {
+    const hash = await computeFileHash(file);
+    if (hash) {
+      hashByFile.set(file, hash);
+    }
+
+    let matches = getDuplicateMatchesInOtherGroups(groupId, { hash, fileName: file.name });
+    let dataUrl = '';
+    if (!matches.length) {
+      dataUrl = await readFileAsDataUrl(file);
+      dataUrlByFile.set(file, dataUrl);
+      matches = getDuplicateMatchesInOtherGroups(groupId, { dataUrl, hash, fileName: file.name });
+    }
+
+    if (!matches.length) continue;
+    duplicateByFile.set(file, matches);
+    entries.push({
+      fileName: file.name,
+      matches
+    });
+  }
+
+  return {
+    entries,
+    totalDuplicates: entries.length,
+    skipAll: false,
+    proceedAll: false,
+    duplicateByFile,
+    hashByFile,
+    dataUrlByFile
+  };
+}
+
+function formatDuplicatePanoramaList(entries = []) {
+  return entries.map((entry, index) => ({
+    index: index + 1,
+    fileName: entry.fileName || 'Unknown file',
+    matches: (entry.matches || []).map((match) => ({
+      groupName: match.groupName || match.groupId || 'Unknown group',
+      sceneName: match.sceneName || match.sceneId || 'Unknown scene'
+    }))
+  }));
+}
+
+function getDuplicateGroupSummary(entries = []) {
+  const groupToFiles = new Map();
+  entries.forEach((entry) => {
+    const fileKey = String(entry.fileName || '').trim();
+    const seenGroups = new Set();
+    (entry.matches || []).forEach((match) => {
+      const groupName = String(match.groupName || match.groupId || 'Unknown Group').trim();
+      if (!groupName || seenGroups.has(groupName)) return;
+      seenGroups.add(groupName);
+      if (!groupToFiles.has(groupName)) {
+        groupToFiles.set(groupName, new Set());
+      }
+      groupToFiles.get(groupName).add(fileKey);
+    });
+  });
+  return Array.from(groupToFiles.entries())
+    .map(([groupName, files]) => ({ groupName, count: files.size }))
+    .sort((a, b) => b.count - a.count || a.groupName.localeCompare(b.groupName, undefined, { sensitivity: 'base' }));
+}
+
+function openDuplicatePanoramaListModal(entries = []) {
+  if (!duplicatePanoramaListModal || !duplicatePanoramaListBody) return;
+  const rows = formatDuplicatePanoramaList(entries);
+  const groupSummary = getDuplicateGroupSummary(entries);
+  const summaryHtml = groupSummary.length
+    ? `
+      <div class="duplicate-list-item">
+        <div class="duplicate-file">Groups summary</div>
+        ${groupSummary.map((item) => `<div>${escapeHtml(item.groupName)}: ${item.count}</div>`).join('')}
+      </div>
+    `
+    : '';
+  if (!rows.length) {
+    duplicatePanoramaListBody.innerHTML = '<div class="panel-hint">No duplicate images found.</div>';
+  } else {
+    duplicatePanoramaListBody.innerHTML = `
+      <div class="duplicate-list">
+        ${summaryHtml}
+        ${rows.map((row) => `
+          <div class="duplicate-list-item">
+            <div class="duplicate-file">${row.index}. ${escapeHtml(row.fileName)}</div>
+            ${row.matches.map((match) => `
+              <div>Group: ${escapeHtml(match.groupName)}</div>
+              <div>Scene: ${escapeHtml(match.sceneName)}</div>
+            `).join('')}
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+  duplicatePanoramaListModal.classList.add('visible');
+  duplicatePanoramaListModal.setAttribute('aria-hidden', 'false');
+}
+
+function closeDuplicatePanoramaListModal() {
+  if (!duplicatePanoramaListModal) return;
+  duplicatePanoramaListModal.classList.remove('visible');
+  duplicatePanoramaListModal.setAttribute('aria-hidden', 'true');
+}
+
+function openDuplicatePanoramaModal(fileName, duplicateInfo, context = null) {
+  if (!duplicatePanoramaModal || !duplicatePanoramaMessage) return;
+  const sceneName = duplicateInfo?.sceneName || duplicateInfo?.sceneId || 'Unknown Scene';
+  const groupName = duplicateInfo?.groupName || duplicateInfo?.groupId || 'Unknown Group';
+  const duplicateCount = Math.max(1, Number(context?.totalDuplicates) || context?.entries?.length || 1);
+  const groupSummary = getDuplicateGroupSummary(context?.entries || []);
+  const groupSummaryLines = groupSummary.length
+    ? ['Groups involved:', ...groupSummary.map((item) => `- ${item.groupName}: ${item.count}`), '']
+    : [];
+  duplicatePanoramaMessage.textContent = [
+    `${duplicateCount} Image(s) already exist in other groups.`,
+    '',
+    ...groupSummaryLines,
+    `Current file: "${fileName}"`,
+    `Group: ${groupName}`,
+    `Scene: ${sceneName}`,
+    '',
+    'Choose what to do:'
+  ].join('\n');
+  duplicatePanoramaListEntries = Array.isArray(context?.entries) ? [...context.entries] : [];
+  duplicatePanoramaModal.classList.add('visible');
+  duplicatePanoramaModal.setAttribute('aria-hidden', 'false');
+}
+
+function closeDuplicatePanoramaModal() {
+  if (!duplicatePanoramaModal) return;
+  duplicatePanoramaModal.classList.remove('visible');
+  duplicatePanoramaModal.setAttribute('aria-hidden', 'true');
+  closeDuplicatePanoramaListModal();
+}
+
+function resolveDuplicatePanoramaChoice(choice) {
+  if (!duplicatePanoramaResolver) return;
+  const resolver = duplicatePanoramaResolver;
+  duplicatePanoramaResolver = null;
+  closeDuplicatePanoramaModal();
+  resolver(choice);
+}
+
+async function askCrossGroupDuplicateAction(fileName, duplicateInfo, context = { entries: [], skipAll: false }) {
+  if (
+    duplicatePanoramaModal &&
+    duplicatePanoramaMessage &&
+    btnDuplicatePanoramaProceed &&
+    btnDuplicatePanoramaAcceptAll &&
+    btnDuplicatePanoramaSkip &&
+    btnDuplicatePanoramaCancel
+  ) {
+    return new Promise((resolve) => {
+      duplicatePanoramaResolver = resolve;
+      openDuplicatePanoramaModal(fileName, duplicateInfo, context);
+    });
+  }
+
+  const sceneName = duplicateInfo?.sceneName || duplicateInfo?.sceneId || 'Unknown Scene';
+  const groupName = duplicateInfo?.groupName || duplicateInfo?.groupId || 'Unknown Group';
+  while (true) {
+    const choice = prompt(
+      [
+        `Image "${fileName}" already exists in another group.`,
+        `Group: ${groupName}`,
+        `Scene: ${sceneName}`,
+        '',
+        'Type one option:',
+        '- proceed',
+        '- accept all',
+        '- skip',
+        '- skip all',
+        '- list',
+        '- cancel'
+      ].join('\n'),
+      'skip'
+    );
+    if (choice === null) return 'cancel';
+    const normalized = String(choice).trim().toLowerCase();
+    if (normalized === 'list') {
+      const rows = formatDuplicatePanoramaList(context.entries);
+      alert(rows.length
+        ? rows.map((row) => `${row.index}. ${row.fileName}\n${row.matches.map((match) => `   Group: ${match.groupName}\n   Scene: ${match.sceneName}`).join('\n')}`).join('\n')
+        : 'No duplicate images found.');
+      continue;
+    }
+    if (normalized === 'accept all' || normalized === 'acceptall') {
+      return 'accept-all';
+    }
+    if (normalized === 'proceed' || normalized === 'skip' || normalized === 'skip all' || normalized === 'skipall' || normalized === 'cancel') {
+      if (normalized === 'skip all' || normalized === 'skipall') return 'skip-all';
+      return normalized;
+    }
+    alert('Invalid option. Type exactly: proceed, accept all, skip, skip all, list, or cancel.');
+  }
+}
+
+function applyPanoramaToScene(scene, file, dataUrl, meta, hash = '') {
   if (meta) {
     scene.sourceImage = {
       name: file.name,
       dataUrl,
+      hash,
       width: meta.width,
       height: meta.height
     };
   } else {
     scene.sourceImage = {
       name: file.name,
-      dataUrl
+      dataUrl,
+      hash
     };
   }
   resetSceneTiles(scene);
 }
 
 async function uploadPanoramaFile(file, options = {}) {
+  const groupId = options.groupId || options.scene?.groupId || state.selectedGroupId || state.project?.groups?.[0]?.id || null;
+  if (!groupId) {
+    updateStatus('Create a group first.');
+    return { ok: false, duplicate: false };
+  }
+
+  const dataUrl = options.dataUrl || await readFileAsDataUrl(file);
+  const meta = options.meta || await readImageMetadata(dataUrl);
+  const hash = options.hash || await computeFileHash(file);
+
+  if (isDuplicatePanoramaInGroup(groupId, dataUrl, hash)) {
+    if (!options.suppressDuplicateStatus) {
+      alert(`Image "${file.name}" already exists in this group.`);
+      updateStatus(`Image "${file.name}" ignored: already exists in this group.`);
+    }
+    return { ok: false, duplicate: true, duplicateScope: 'same-group' };
+  }
+
+  const duplicateInOtherGroup =
+    (options.precomputedDuplicateMatchesInOtherGroup?.[0] || null) ||
+    findDuplicatePanoramaInOtherGroups(groupId, dataUrl, hash, file.name);
+  if (duplicateInOtherGroup) {
+    const duplicateBatchContext = options.duplicateBatchContext || { entries: [], totalDuplicates: 1, skipAll: false };
+
+    let action = 'skip';
+    if (duplicateBatchContext.skipAll) {
+      action = 'skip-all';
+    } else if (duplicateBatchContext.proceedAll) {
+      action = 'proceed';
+    } else {
+      action = await askCrossGroupDuplicateAction(file.name, duplicateInOtherGroup, duplicateBatchContext);
+    }
+    if (action === 'cancel') {
+      updateStatus('Upload cancelled.');
+      return { ok: false, cancelled: true };
+    }
+    if (action === 'accept-all') {
+      duplicateBatchContext.proceedAll = true;
+      action = 'proceed';
+    }
+    if (action === 'skip-all') {
+      duplicateBatchContext.skipAll = true;
+      updateStatus(`Image "${file.name}" skipped (Skip All active).`);
+      return { ok: false, duplicate: true, duplicateScope: 'other-group' };
+    }
+    if (action === 'skip') {
+      updateStatus(`Image "${file.name}" skipped: already exists in group "${duplicateInOtherGroup.groupName}".`);
+      return { ok: false, duplicate: true, duplicateScope: 'other-group' };
+    }
+  }
+
   let scene = options.scene || null;
   if (!scene) {
-    const groupId = state.selectedGroupId || state.project?.groups?.[0]?.id || null;
-    if (!groupId) {
-      updateStatus('Create a group first.');
-      return false;
-    }
     scene = createSceneRecord(sceneNameFromFile(file.name), groupId);
     state.project.scenes.push(scene);
     ensureMainSceneForGroup(groupId, scene.id);
     state.selectedSceneId = scene.id;
     state.selectedHotspotId = null;
   }
-  const dataUrl = await readFileAsDataUrl(file);
-  const meta = await readImageMetadata(dataUrl);
-  applyPanoramaToScene(scene, file, dataUrl, meta);
+  applyPanoramaToScene(scene, file, dataUrl, meta, hash);
 
   if (!options.skipRender) {
     updateStatus(meta ? 'Panorama loaded. Ready to generate tiles.' : 'Panorama loaded (size unknown). Ready to generate tiles.');
@@ -2384,36 +4229,50 @@ async function uploadPanoramaFile(file, options = {}) {
     renderAll();
     autosave();
   }
-  return true;
+  return { ok: true, duplicate: false, sceneId: scene.id };
 }
 
 async function uploadPanoramaFiles(files) {
   const fileList = Array.from(files || []);
   if (!fileList.length) return;
 
-  if (fileList.length === 1) {
-    await uploadPanoramaFile(fileList[0]);
-    return;
-  }
-
   let imported = 0;
+  let cancelled = false;
+  const ignoredSameGroup = [];
+  const ignoredOtherGroup = [];
   const createdSceneIds = [];
   const targetGroupId = state.selectedGroupId || state.project?.groups?.[0]?.id || null;
+  const duplicateBatchContext = await precomputeCrossGroupDuplicates(fileList, targetGroupId);
 
   for (const file of fileList) {
-    const scene = createSceneRecord(sceneNameFromFile(file.name), targetGroupId);
-    state.project.scenes.push(scene);
-    ensureMainSceneForGroup(targetGroupId, scene.id);
     try {
-      await uploadPanoramaFile(file, { scene, skipRender: true });
-      createdSceneIds.push(scene.id);
-      imported += 1;
+      const result = await uploadPanoramaFile(file, {
+        groupId: targetGroupId,
+        dataUrl: duplicateBatchContext.dataUrlByFile.get(file) || undefined,
+        skipRender: true,
+        suppressDuplicateStatus: true,
+        duplicateBatchContext,
+        hash: duplicateBatchContext.hashByFile.get(file) || '',
+        precomputedDuplicateMatchesInOtherGroup: duplicateBatchContext.duplicateByFile.get(file) || null
+      });
+      if (result?.duplicate) {
+        if (result.duplicateScope === 'other-group') {
+          ignoredOtherGroup.push(file.name);
+        } else {
+          ignoredSameGroup.push(file.name);
+        }
+        continue;
+      }
+      if (result?.cancelled) {
+        cancelled = true;
+        break;
+      }
+      if (result?.ok && result.sceneId) {
+        createdSceneIds.push(result.sceneId);
+        imported += 1;
+      }
     } catch (error) {
       console.error('Panorama upload failed:', file.name, error);
-      const index = state.project.scenes.findIndex((entry) => entry.id === scene.id);
-      if (index !== -1) {
-        state.project.scenes.splice(index, 1);
-      }
     }
   }
 
@@ -2425,7 +4284,19 @@ async function uploadPanoramaFiles(files) {
 
   refreshEditorScenes();
   renderAll();
-  updateStatus(`Loaded ${imported}/${fileList.length} panoramas. Double-click a scene name to rename.`);
+  const ignoredCount = ignoredSameGroup.length + ignoredOtherGroup.length;
+  if (ignoredCount) {
+    const scopes = [];
+    if (ignoredSameGroup.length) scopes.push(`same group: ${ignoredSameGroup.length}`);
+    if (ignoredOtherGroup.length) scopes.push(`other groups skipped: ${ignoredOtherGroup.length}`);
+    const cancelPart = cancelled ? ' Upload stopped by user.' : '';
+    const scopesPart = scopes.length ? ` (${scopes.join(', ')})` : '';
+    updateStatus(`Loaded ${imported}/${fileList.length} panoramas. Ignored duplicates: ${ignoredCount}${scopesPart}.${cancelPart}`);
+  } else {
+    updateStatus(cancelled
+      ? `Loaded ${imported}/${fileList.length} panoramas. Upload stopped by user.`
+      : `Loaded ${imported}/${fileList.length} panoramas. Double-click a scene name to rename.`);
+  }
   autosave();
 }
 
@@ -2438,6 +4309,60 @@ function askTileOptions() {
     faceSize: Number(faceInput) || 1024,
     tileSize: Number(tileInput) || 512
   };
+}
+
+function highestPowerOfTwoAtOrBelow(value) {
+  const n = Math.floor(Number(value) || 0);
+  if (n < 1) return 1;
+  return 2 ** Math.floor(Math.log2(n));
+}
+
+async function showTileSizingInfo() {
+  const scene = getSelectedScene();
+  if (!scene || !scene.sourceImage?.dataUrl) {
+    updateStatus('Select a scene with an uploaded 360 image first.');
+    return;
+  }
+
+  let width = Number(scene.sourceImage.width) || 0;
+  let height = Number(scene.sourceImage.height) || 0;
+  if (!width || !height) {
+    const meta = await readImageMetadata(scene.sourceImage.dataUrl);
+    if (meta?.width && meta?.height) {
+      width = meta.width;
+      height = meta.height;
+      scene.sourceImage.width = width;
+      scene.sourceImage.height = height;
+    }
+  }
+
+  if (!width || !height) {
+    updateStatus('Could not detect image resolution for this scene.');
+    return;
+  }
+
+  const maxUsefulFaceRaw = Math.max(256, Math.floor(Math.min(width / 4, height / 2)));
+  const maxUsefulFacePow2 = highestPowerOfTwoAtOrBelow(maxUsefulFaceRaw);
+  const maxUsefulTile = Math.max(256, highestPowerOfTwoAtOrBelow(maxUsefulFacePow2 / 4));
+  const suggestedFaceSizes = [512, 1024, 2048, 4096, 8192].filter((v) => v <= maxUsefulFacePow2);
+  const suggestedTileSizes = [256, 512, 1024, 2048].filter((v) => v <= maxUsefulTile);
+
+  const lines = [
+    `Scene: ${scene.name || scene.id}`,
+    `Source image: ${width} x ${height}`,
+    '',
+    `Max useful face size (no upscaling): ${maxUsefulFaceRaw}px`,
+    `Recommended face size (power of 2): ${maxUsefulFacePow2}px`,
+    `Max useful tile size: ${maxUsefulTile}px`,
+    '',
+    `Suggested face sizes: ${suggestedFaceSizes.length ? suggestedFaceSizes.join(', ') : maxUsefulFacePow2}`,
+    `Suggested tile sizes: ${suggestedTileSizes.length ? suggestedTileSizes.join(', ') : maxUsefulTile}`,
+    '',
+    'Note: larger tiles create fewer files but reduce zoom detail granularity.'
+  ];
+
+  alert(lines.join('\n'));
+  updateStatus(`Tile info ready for "${scene.name || scene.id}".`);
 }
 
 async function generateTilesForScene(options = {}) {
@@ -2496,15 +4421,46 @@ async function generateTilesForScene(options = {}) {
   }
 }
 
-async function generateTilesForAllScenes() {
+function getTileSelectionScenes() {
+  const scenes = state.project?.scenes || [];
+  const selectedIds = (state.multiSelectedSceneIds || []).filter(Boolean);
+  if (selectedIds.length) {
+    const selectedSet = new Set(selectedIds);
+    return scenes.filter((scene) => selectedSet.has(scene.id));
+  }
+  const selectedScene = getSelectedScene();
+  return selectedScene ? [selectedScene] : [];
+}
+
+async function generateTilesForSelectedScenes() {
   if (!state.project?.scenes?.length) {
     updateStatus('No scenes available.');
     return;
   }
 
-  const scenesWithPanorama = state.project.scenes.filter((scene) => scene.sourceImage?.dataUrl);
+  const selectedScenes = getTileSelectionScenes();
+  if (!selectedScenes.length) {
+    updateStatus('Select at least one scene.');
+    return;
+  }
+
+  const alreadyTiled = selectedScenes.filter((scene) => sceneHasGeneratedTiles(scene));
+  const scenesToProcess = selectedScenes.filter((scene) => !sceneHasGeneratedTiles(scene));
+  const scenesWithPanorama = scenesToProcess.filter((scene) => scene.sourceImage?.dataUrl);
+  const skippedNoPanorama = scenesToProcess.length - scenesWithPanorama.length;
+
   if (!scenesWithPanorama.length) {
-    updateStatus('No scenes with uploaded 360 image found.');
+    if (alreadyTiled.length && !skippedNoPanorama) {
+      updateStatus(`All selected scenes already have tiles. Skipped: ${alreadyTiled.length}.`);
+      renderSceneList();
+      return;
+    }
+    if (alreadyTiled.length && skippedNoPanorama) {
+      updateStatus(`No new scenes to tile. Already tiled: ${alreadyTiled.length}. Without image: ${skippedNoPanorama}.`);
+      renderSceneList();
+      return;
+    }
+    updateStatus('Selected scenes have no uploaded 360 image.');
     return;
   }
 
@@ -2528,12 +4484,16 @@ async function generateTilesForAllScenes() {
       });
       completed += 1;
     }
-    updateStatus(`Tiles generated for ${completed}/${scenesWithPanorama.length} scenes.`);
+    const skippedParts = [];
+    if (alreadyTiled.length) skippedParts.push(`already tiled: ${alreadyTiled.length}`);
+    if (skippedNoPanorama) skippedParts.push(`without image: ${skippedNoPanorama}`);
+    const skippedPart = skippedParts.length ? ` Skipped ${skippedParts.join(', ')}.` : '';
+    updateStatus(`Tiles generated for ${completed}/${scenesWithPanorama.length} selected scenes.${skippedPart}`);
   } catch (error) {
     if (error?.message === 'cancelled') {
-      updateStatus(`Tiling cancelled (${completed}/${scenesWithPanorama.length} scenes completed).`);
+      updateStatus(`Tiling cancelled (${completed}/${scenesWithPanorama.length} selected scenes completed).`);
     } else {
-      updateStatus(`Batch tiling failed (${completed}/${scenesWithPanorama.length} completed).`);
+      updateStatus(`Selected tiling failed (${completed}/${scenesWithPanorama.length} completed).`);
     }
   } finally {
     const stillExists = state.project.scenes.some((scene) => scene.id === originalSceneId);
@@ -2815,7 +4775,21 @@ document.getElementById('btn-delete-hotspot').addEventListener('click', deleteHo
 document.getElementById('btn-add-block').addEventListener('click', addBlock);
 
 projectNameInput.addEventListener('input', (event) => updateProjectName(event.target.value));
+projectFovInput?.addEventListener('input', (event) => updateProjectFov(event.target.value));
+projectFovInput?.addEventListener('change', (event) => updateProjectFov(event.target.value, { commit: true }));
+btnResetProject?.addEventListener('click', resetProjectWithConfirmation);
+sceneCommentInput?.addEventListener('input', (event) => {
+  const scene = getSelectedScene();
+  if (!scene) return;
+  scene.comment = event.target.value || '';
+  autosave();
+});
+linkTargetAllGroupsToggle?.addEventListener('change', (event) => {
+  state.linkTargetAllGroups = Boolean(event.target.checked);
+  renderLinkEditor();
+});
 sceneGroupSelect.addEventListener('change', (event) => {
+  clearPendingSceneLinkDraft(false);
   state.selectedGroupId = event.target.value;
   const preferredScene = getPreferredSceneForGroup(state.selectedGroupId);
   state.selectedSceneId = preferredScene?.id || null;
@@ -2827,30 +4801,59 @@ sceneGroupSelect.addEventListener('change', (event) => {
 
 linkTargetSceneSelect.addEventListener('change', (event) => {
   const hotspot = getSelectedLinkHotspot();
-  if (!hotspot) return;
-  hotspot.contentBlocks = hotspot.contentBlocks || [];
-  let block = getSceneLinkBlock(hotspot);
-  if (!block) {
-    block = { type: 'scene', sceneId: '', comment: '' };
-    hotspot.contentBlocks.push(block);
+  const selectedTarget = event.target.value === state.selectedSceneId ? '' : event.target.value;
+  if (hotspot) {
+    hotspot.contentBlocks = hotspot.contentBlocks || [];
+    let block = getSceneLinkBlock(hotspot);
+    if (!block) {
+      block = { type: 'scene', sceneId: '', comment: '' };
+      hotspot.contentBlocks.push(block);
+    }
+    block.sceneId = selectedTarget;
+    renderLinkEditor();
+    renderContentBlocks();
+    autosave();
+    return;
   }
-  block.sceneId = event.target.value;
+  const pendingDraft = getPendingSceneLinkDraftForSelectedScene();
+  if (pendingDraft) {
+    pendingDraft.targetSceneId = selectedTarget;
+  }
   renderLinkEditor();
-  renderContentBlocks();
-  autosave();
+});
+
+linkNewColorSelect?.addEventListener('change', (event) => {
+  const next = normalizeSceneLinkColorKey(event.target.value);
+  state.newLinkColorKey = next;
+  const hotspot = getSelectedLinkHotspot();
+  if (hotspot && placementMode) {
+    hotspot.linkColorKey = next;
+    autosave();
+  }
+  if (pendingSceneLinkDraft) {
+    pendingSceneLinkDraft.linkColorKey = next;
+  }
+  renderLinkEditor();
+  scheduleMarkerRender();
 });
 
 linkCommentInput.addEventListener('input', (event) => {
   const hotspot = getSelectedLinkHotspot();
-  if (!hotspot) return;
-  hotspot.contentBlocks = hotspot.contentBlocks || [];
-  let block = getSceneLinkBlock(hotspot);
-  if (!block) {
-    block = { type: 'scene', sceneId: '', comment: '' };
-    hotspot.contentBlocks.push(block);
+  if (hotspot) {
+    hotspot.contentBlocks = hotspot.contentBlocks || [];
+    let block = getSceneLinkBlock(hotspot);
+    if (!block) {
+      block = { type: 'scene', sceneId: '', comment: '' };
+      hotspot.contentBlocks.push(block);
+    }
+    block.comment = event.target.value;
+    autosave();
+    return;
   }
-  block.comment = event.target.value;
-  autosave();
+  const pendingDraft = getPendingSceneLinkDraftForSelectedScene();
+  if (pendingDraft) {
+    pendingDraft.comment = event.target.value;
+  }
 });
 
 iconSelect.addEventListener('change', (event) => {
@@ -2863,6 +4866,14 @@ iconSelect.addEventListener('change', (event) => {
 linkSelect.addEventListener('change', (event) => {
   const hotspotId = event.target.value;
   if (!hotspotId) return;
+  if (hotspotId === '__pending__') {
+    state.selectedHotspotId = null;
+    renderLinkEditor();
+    renderContentBlocks();
+    renderIconOptions();
+    scheduleMarkerRender();
+    return;
+  }
   state.selectedHotspotId = hotspotId;
   renderLinkEditor();
   renderContentBlocks();
@@ -2878,26 +4889,141 @@ btnUploadIcon.addEventListener('click', () => fileIcon.click());
 btnUploadMedia.addEventListener('click', () => fileMedia.click());
 btnUploadFloorplan.addEventListener('click', () => fileFloorplan.click());
 btnDeleteFloorplan.addEventListener('click', deleteFloorplan);
+btnFloorplanPlaceScene?.addEventListener('click', () => {
+  if (btnFloorplanPlaceScene.disabled) return;
+  setFloorplanPlaceMode(!floorplanPlaceMode);
+});
+btnFloorplanEdit?.addEventListener('click', () => {
+  if (btnFloorplanEdit.disabled) return;
+  setFloorplanEditMode(!floorplanEditMode);
+});
+btnFloorplanSelectAll?.addEventListener('click', () => {
+  if (btnFloorplanSelectAll.disabled) return;
+  setFloorplanSelectAllMode(!floorplanSelectAllMode);
+});
+btnFloorplanDeleteNode?.addEventListener('click', () => {
+  if (btnFloorplanDeleteNode.disabled) return;
+  deleteSelectedFloorplanNode();
+});
+btnFloorplanToggleLabels?.addEventListener('click', () => {
+  if (btnFloorplanToggleLabels.disabled) return;
+  setFloorplanShowLabels(!floorplanShowLabels);
+});
+btnFloorplanExpand?.addEventListener('click', () => {
+  setFloorplanMapWindowOpen(!floorplanMapWindowOpen);
+});
+floorplanColorSelect?.addEventListener('change', (event) => {
+  const colorKey = event.target.value || 'yellow';
+  setSelectedFloorplanColor(colorKey);
+});
+btnFloorplanZoomReset?.addEventListener('click', () => {
+  setFloorplanZoom(1);
+});
 btnUploadPanorama.addEventListener('click', () => filePanorama.click());
-btnGenerateTiles.addEventListener('click', generateTilesForScene);
-btnGenerateAllTiles.addEventListener('click', generateTilesForAllScenes);
+btnGenerateTiles.addEventListener('click', generateTilesForSelectedScenes);
+btnTilesInfo?.addEventListener('click', showTileSizingInfo);
+btnDeleteSelectedScenes?.addEventListener('click', deleteSelectedScenes);
 btnPauseTiles.addEventListener('click', pauseTiling);
 btnResumeTiles.addEventListener('click', resumeTiling);
 btnTogglePlacement.addEventListener('click', togglePlacementMode);
 btnPreviewHotspot.addEventListener('click', () => openHotspotPreview(state.selectedHotspotId));
 btnSetMainScene.addEventListener('click', setMainSceneForSelectedGroup);
+btnSetOrientation?.addEventListener('click', () => {
+  if (!state.selectedSceneId) {
+    updateStatus('Select a scene first.');
+    return;
+  }
+  setSceneOrientationById(state.selectedSceneId);
+});
 btnAddSceneLink.addEventListener('click', addSceneLinkBlock);
 btnDeleteSceneLink.addEventListener('click', deleteSceneLinkBlock);
 btnRemoveAllLinks.addEventListener('click', removeAllSceneLinksForCurrentScene);
+btnToggleLinksPanel?.addEventListener('click', () => {
+  toggleSection(btnToggleLinksPanel, linksPanelBody);
+});
+btnToggleProjectPanel?.addEventListener('click', () => {
+  toggleSection(btnToggleProjectPanel, projectPanelBody);
+});
+btnToggleGroupsPanel?.addEventListener('click', () => {
+  toggleSection(btnToggleGroupsPanel, groupsPanelBody);
+});
+btnToggleScenesPanel?.addEventListener('click', () => {
+  toggleSection(btnToggleScenesPanel, scenesPanelBody);
+});
+btnSceneSortName?.addEventListener('click', () => toggleSceneSort('name'));
+btnSceneSortUpload?.addEventListener('click', () => toggleSceneSort('upload'));
+btnSceneLabelMode?.addEventListener('click', toggleSceneLabelMode);
+btnToggleMapPanel?.addEventListener('click', () => {
+  if (floorplanMapWindowOpen) {
+    setFloorplanMapWindowOpen(false);
+  }
+  toggleSection(btnToggleMapPanel, mapPanelBody);
+});
+btnToggleSceneActionsPanel?.addEventListener('click', () => {
+  toggleSection(btnToggleSceneActionsPanel, sceneActionsPanelBody);
+});
 btnCancelTiles.addEventListener('click', () => {
   if (tilerWorker && activeTilingRequestId) {
     tilerWorker.postMessage({ type: 'cancel', requestId: activeTilingRequestId });
   }
 });
 btnClosePreview.addEventListener('click', closeHotspotPreview);
+btnDeleteLinksScene?.addEventListener('click', () => resolveDeleteLinksScope('scene'));
+btnDeleteLinksGroup?.addEventListener('click', () => resolveDeleteLinksScope('group'));
+btnDeleteLinksCancel?.addEventListener('click', () => resolveDeleteLinksScope(null));
+btnDuplicatePanoramaProceed?.addEventListener('click', () => resolveDuplicatePanoramaChoice('proceed'));
+btnDuplicatePanoramaAcceptAll?.addEventListener('click', () => resolveDuplicatePanoramaChoice('accept-all'));
+btnDuplicatePanoramaSkip?.addEventListener('click', () => resolveDuplicatePanoramaChoice('skip'));
+btnDuplicatePanoramaSkipAll?.addEventListener('click', () => resolveDuplicatePanoramaChoice('skip-all'));
+btnDuplicatePanoramaList?.addEventListener('click', () => openDuplicatePanoramaListModal(duplicatePanoramaListEntries));
+btnDuplicatePanoramaCancel?.addEventListener('click', () => resolveDuplicatePanoramaChoice('cancel'));
+btnCloseDuplicatePanoramaList?.addEventListener('click', closeDuplicatePanoramaListModal);
 previewModal.addEventListener('click', (event) => {
   if (event.target === previewModal) {
     closeHotspotPreview();
+  }
+});
+deleteLinksScopeModal?.addEventListener('click', (event) => {
+  if (event.target === deleteLinksScopeModal) {
+    resolveDeleteLinksScope(null);
+  }
+});
+duplicatePanoramaModal?.addEventListener('click', (event) => {
+  if (event.target === duplicatePanoramaModal) {
+    resolveDuplicatePanoramaChoice('cancel');
+  }
+});
+duplicatePanoramaListModal?.addEventListener('click', (event) => {
+  if (event.target === duplicatePanoramaListModal) {
+    closeDuplicatePanoramaListModal();
+  }
+});
+mapWindowBackdrop?.addEventListener('click', () => {
+  setFloorplanMapWindowOpen(false);
+});
+window.addEventListener('keydown', (event) => {
+  const blockingModalOpen =
+    previewModal?.classList.contains('visible') ||
+    deleteLinksScopeModal?.classList.contains('visible') ||
+    duplicatePanoramaModal?.classList.contains('visible') ||
+    duplicatePanoramaListModal?.classList.contains('visible');
+  if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && !isTypingTarget(event.target) && !blockingModalOpen) {
+    const moved = moveSceneSelectionBy(event.key === 'ArrowDown' ? 1 : -1);
+    if (moved) {
+      event.preventDefault();
+      return;
+    }
+  }
+  if (event.key === 'Escape' && duplicatePanoramaListModal?.classList.contains('visible')) {
+    closeDuplicatePanoramaListModal();
+    return;
+  }
+  if (event.key === 'Escape' && duplicatePanoramaModal?.classList.contains('visible')) {
+    resolveDuplicatePanoramaChoice('cancel');
+    return;
+  }
+  if (event.key === 'Escape' && floorplanMapWindowOpen) {
+    setFloorplanMapWindowOpen(false);
   }
 });
 
@@ -2941,6 +5067,13 @@ filePanorama.addEventListener('change', async (event) => {
 });
 
 window.addEventListener('resize', handleResize);
+setSectionCollapsed(btnToggleProjectPanel, projectPanelBody, false);
+setSectionCollapsed(btnToggleGroupsPanel, groupsPanelBody, false);
+setSectionCollapsed(btnToggleScenesPanel, scenesPanelBody, false);
+setSectionCollapsed(btnToggleMapPanel, mapPanelBody, false);
+setSectionCollapsed(btnToggleSceneActionsPanel, sceneActionsPanelBody, false);
+setLinksPanelCollapsed(false);
+setFloorplanMapWindowOpen(false);
 
 async function bootstrap() {
   const draft = await loadDraft();

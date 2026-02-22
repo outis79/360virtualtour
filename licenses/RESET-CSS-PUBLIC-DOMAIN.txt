@@ -1,0 +1,5 @@
+Reset CSS v2.0 by Eric Meyer
+Source: https://meyerweb.com/eric/tools/css/reset/
+
+The reset stylesheet is released to the public domain.
+No attribution is legally required, but attribution is appreciated.

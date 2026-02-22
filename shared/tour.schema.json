@@ -31,7 +31,10 @@
         "required": ["id", "name", "levels", "faceSize", "initialViewParameters", "hotspots"],
         "properties": {
           "id": { "type": "string" },
+          "groupId": { "type": "string" },
           "name": { "type": "string" },
+          "alias": { "type": "string" },
+          "comment": { "type": "string" },
           "tilesPath": { "type": "string" },
           "previewPath": { "type": "string" },
           "levels": {
@@ -47,6 +50,7 @@
             }
           },
           "faceSize": { "type": "number" },
+          "orientationSaved": { "type": "boolean" },
           "initialViewParameters": {
             "type": "object",
             "required": ["yaw", "pitch", "fov"],
@@ -67,23 +71,39 @@
                 "pitch": { "type": "number" },
                 "iconId": { "type": "string" },
                 "title": { "type": "string" },
+                "linkCode": { "type": "string" },
+                "linkColorKey": { "type": "string" },
                 "contentBlocks": {
                   "type": "array",
                   "items": {
                     "type": "object",
                     "required": ["type"],
                     "properties": {
-                      "type": { "type": "string", "enum": ["text", "image", "video", "audio", "link"] },
+                      "type": { "type": "string", "enum": ["text", "image", "video", "audio", "link", "scene"] },
                       "value": { "type": "string" },
                       "assetId": { "type": "string" },
                       "url": { "type": "string" },
-                      "label": { "type": "string" }
+                      "label": { "type": "string" },
+                      "sceneId": { "type": "string" },
+                      "comment": { "type": "string" }
                     }
                   }
                 }
               }
             }
           }
+        }
+      }
+    },
+    "groups": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name"],
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "mainSceneId": { "type": ["string", "null"] }
         }
       }
     },
@@ -141,12 +161,14 @@
           "type": "array",
           "items": {
             "type": "object",
-            "required": ["id", "name"],
+            "required": ["id", "groupId", "path"],
             "properties": {
               "id": { "type": "string" },
+              "groupId": { "type": "string" },
               "name": { "type": "string" },
               "dataUrl": { "type": "string" },
               "path": { "type": "string" },
+              "markerColorKey": { "type": "string" },
               "nodes": {
                 "type": "array",
                 "items": {
@@ -156,7 +178,8 @@
                     "sceneId": { "type": "string" },
                     "x": { "type": "number" },
                     "y": { "type": "number" },
-                    "rotation": { "type": "number" }
+                    "rotation": { "type": "number" },
+                    "colorKey": { "type": "string" }
                   }
                 }
               }

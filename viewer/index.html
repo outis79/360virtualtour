@@ -40,15 +40,27 @@
       </div>
 
       <div class="panel-section">
-        <div class="section-title">Floorplan</div>
+        <div class="section-title">Map</div>
+        <div class="floorplan-tools">
+          <button class="btn ghost" id="btn-floorplan-zoom-out">-</button>
+          <button class="btn ghost" id="btn-floorplan-zoom-in">+</button>
+          <button class="btn ghost" id="btn-floorplan-zoom-reset">Reset</button>
+          <span class="floorplan-zoom-value" id="floorplan-zoom-value">100%</span>
+        </div>
         <div class="floorplan-wrap">
-          <img id="floorplan-image" class="floorplan-image hidden" alt="Floorplan">
-          <div id="floorplan-markers" class="floorplan-markers hidden" aria-label="Floorplan scene markers"></div>
-          <div id="floorplan-empty" class="muted-note">No floorplan for this group.</div>
+          <div id="floorplan-stage" class="floorplan-stage hidden">
+            <img id="floorplan-image" class="floorplan-image hidden" alt="Floorplan">
+            <div id="floorplan-markers" class="floorplan-markers hidden" aria-label="Floorplan scene markers"></div>
+          </div>
+          <div id="floorplan-empty" class="muted-note hidden"></div>
         </div>
       </div>
     </aside>
   </main>
+
+  <footer class="license-footer">
+    Powered by Marzipano (Apache-2.0), JSZip (MIT), Bowser (MIT), Screenfull (MIT), Reset CSS (Public Domain).
+  </footer>
 
   <div class="hotspot-modal" id="hotspot-modal" aria-hidden="true">
     <div class="modal-content">

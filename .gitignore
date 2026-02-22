@@ -1,0 +1,12 @@
+# Tour runtime data (personal/exported content) - keep out of builder repo
+viewer/tiles/
+viewer/media/
+viewer/floorplans/
+viewer/icons/
+
+# Optional export artifacts
+*-static.json
+*-static.zip
+
+# Local temp
+*.tmp
