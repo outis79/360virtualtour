@@ -82,7 +82,7 @@ Then open:
 3. Upload one or more panorama images (`Upload Img` in `Groups` panel).
 4. Generate tiles (`Generate Tiles`) for current scene selection (single or multi-select).
 5. Add hotspots and content.
-6. Upload icons/media/floorplan.
+6. Upload floorplan.
 7. Use map modes:
    - `Place`: add the current scene on map (no duplicates for same scene)
    - `Edit`: drag/delete points, change selected point color
@@ -101,7 +101,7 @@ Each project includes:
 - `settings`: viewer options
 - `groups`: scene grouping and per-group main scene
 - `scenes`: scene metadata, initial view, hotspots, source or tile references
-- `assets`: icon/media library
+- `assets`: media library
 - `minimap.floorplans`: per-group floorplan with scene nodes
 
 Scene/link naming notes:
@@ -122,7 +122,6 @@ viewer/index.html
 viewer/app.js
 viewer/styles.css
 viewer/vendor/*
-viewer/icons/*
 viewer/media/*
 viewer/floorplans/*
 viewer/tiles/<scene-id>/preview.jpg
@@ -171,7 +170,7 @@ You can customize or remove it if needed. Licenses are still documented in `THIR
 ## Public Builder vs Personal Tours
 If you publish this repository as a public editor, keep it content-neutral:
 - keep `shared/sample-tour.json` as a blank template
-- do not commit personal `viewer/tiles`, `viewer/media`, `viewer/floorplans`, `viewer/icons`
+- do not commit personal `viewer/tiles`, `viewer/media`, `viewer/floorplans`
 - publish exported tours in a separate repository/folder
 
 Recommended setup:

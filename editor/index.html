@@ -196,7 +196,7 @@
         </div>
       </section>
 
-      <section class="panel-section">
+      <section class="panel-section" hidden>
         <div class="section-title">Hotspots</div>
         <div class="inline-actions">
           <button class="btn" id="btn-add-hotspot">Add Hotspot</button>
@@ -208,7 +208,7 @@
         <div class="panel-hint">Generic hotspot tools.</div>
       </section>
 
-      <section class="panel-section">
+      <section class="panel-section" hidden>
         <div class="section-title">Hotspot Content</div>
         <div class="content-blocks" id="content-blocks"></div>
         <div class="inline-actions">
@@ -216,22 +216,6 @@
         </div>
       </section>
 
-      <section class="panel-section">
-        <div class="section-title">Icon</div>
-        <div class="field">
-          <label>Icon</label>
-          <select id="icon-select"></select>
-        </div>
-        <button class="btn" id="btn-upload-icon">Upload Custom Icon</button>
-      </section>
-
-      <section class="panel-section">
-        <div class="section-title">Media Library</div>
-        <div class="list" id="media-list"></div>
-        <div class="inline-actions">
-          <button class="btn" id="btn-upload-media">Upload Media</button>
-        </div>
-      </section>
     </aside>
   </main>
 
@@ -299,8 +283,6 @@
 
 
   <input type="file" id="file-import" accept="application/json" hidden>
-  <input type="file" id="file-icon" accept="image/*,.svg" hidden>
-  <input type="file" id="file-media" accept="image/*,audio/*,video/*" hidden>
   <input type="file" id="file-floorplan" accept="image/*" hidden>
   <input type="file" id="file-panorama" accept="image/*" multiple hidden>
 

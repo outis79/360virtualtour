@@ -64,12 +64,11 @@
             "type": "array",
             "items": {
               "type": "object",
-              "required": ["id", "yaw", "pitch", "iconId", "title", "contentBlocks"],
+              "required": ["id", "yaw", "pitch", "title", "contentBlocks"],
               "properties": {
                 "id": { "type": "string" },
                 "yaw": { "type": "number" },
                 "pitch": { "type": "number" },
-                "iconId": { "type": "string" },
                 "title": { "type": "string" },
                 "linkCode": { "type": "string" },
                 "linkColorKey": { "type": "string" },
@@ -110,19 +109,6 @@
     "assets": {
       "type": "object",
       "properties": {
-        "icons": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "required": ["id"],
-            "properties": {
-              "id": { "type": "string" },
-              "path": { "type": "string" },
-              "dataUrl": { "type": "string" },
-              "name": { "type": "string" }
-            }
-          }
-        },
         "media": {
           "type": "array",
           "items": {

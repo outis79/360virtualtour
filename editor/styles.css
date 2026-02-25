@@ -690,22 +690,6 @@ textarea:disabled {
   background: #10161e;
 }
 
-.media-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 8px 10px;
-  border: 1px solid var(--outline);
-  border-radius: 6px;
-  background: var(--panel-2);
-  font-size: 12px;
-}
-
-.media-item span {
-  color: var(--muted);
-}
-
 .block-header {
   display: flex;
   justify-content: space-between;

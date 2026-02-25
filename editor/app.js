@@ -31,7 +31,6 @@ const fallbackProject = {
           id: 'hs-altar',
           yaw: 1.2,
           pitch: -0.1,
-          iconId: 'info',
           title: 'Main Altar',
           contentBlocks: [
             { type: 'text', value: 'Short description.' },
@@ -48,7 +47,6 @@ const fallbackProject = {
     { id: 'group-main', name: 'Main Group' }
   ],
   assets: {
-    icons: [{ id: 'info', path: 'icons/info.svg', name: 'Info' }],
     media: [
       { id: 'img-altar', type: 'image', path: 'media/altar.jpg', name: 'Altar Image' },
       { id: 'aud-narration', type: 'audio', path: 'media/narration.mp3', name: 'Narration' }
@@ -103,8 +101,6 @@ const btnSave = document.getElementById('btn-save');
 const btnExport = document.getElementById('btn-export');
 const btnExportStatic = document.getElementById('btn-export-static');
 const btnResetProject = document.getElementById('btn-reset-project');
-const btnUploadIcon = document.getElementById('btn-upload-icon');
-const btnUploadMedia = document.getElementById('btn-upload-media');
 const btnUploadFloorplan = document.getElementById('btn-upload-minimap');
 const btnDeleteFloorplan = document.getElementById('btn-delete-floorplan');
 const btnUploadPanorama = document.getElementById('btn-upload-panorama');
@@ -139,12 +135,8 @@ const sceneActionsPanelBody = document.getElementById('scene-actions-panel-body'
 const mapWindowBackdrop = document.getElementById('map-window-backdrop');
 const layoutRoot = document.querySelector('.layout');
 const fileImport = document.getElementById('file-import');
-const fileIcon = document.getElementById('file-icon');
-const fileMedia = document.getElementById('file-media');
 const fileFloorplan = document.getElementById('file-floorplan');
 const filePanorama = document.getElementById('file-panorama');
-const iconSelect = document.getElementById('icon-select');
-const mediaList = document.getElementById('media-list');
 const miniMap = document.getElementById('mini-map');
 const btnFloorplanExpand = document.getElementById('btn-floorplan-expand');
 const btnFloorplanPlaceScene = document.getElementById('btn-floorplan-place-scene');
@@ -299,6 +291,8 @@ function loadProject(project) {
   project.minimap = project.minimap || { enabled: false, floorplans: [] };
   project.minimap.floorplans = project.minimap.floorplans || [];
   project.scenes = project.scenes || [];
+  project.assets = project.assets || {};
+  project.assets.media = Array.isArray(project.assets.media) ? project.assets.media : [];
 
   const defaultGroupId = project.groups[0].id;
   project.scenes.forEach((scene) => {
@@ -371,8 +365,6 @@ function renderAll() {
   renderContentBlocks();
   updateSceneTitle();
   syncSceneFovInput();
-  renderIconOptions();
-  renderMediaList();
   renderFloorplans();
   switchEditorScene();
 }
@@ -1096,8 +1088,6 @@ function selectScene(sceneId) {
   updateSceneTitle();
   renderHotspotList();
   renderContentBlocks();
-  renderIconOptions();
-  renderMediaList();
   renderSceneCommentField();
   renderFloorplans();
   switchEditorScene();
@@ -1563,8 +1553,6 @@ function commitPendingSceneLinkAt(coords, { statusMessage = 'Link created and pl
   renderHotspotList();
   renderLinkEditor();
   renderContentBlocks();
-  renderIconOptions();
-  renderMediaList();
   renderFloorplans();
   updateStatus(statusMessage);
   autosave();
@@ -1880,7 +1868,6 @@ function startMarkerDrag(event, hotspotId) {
     renderHotspotList();
     renderLinkEditor();
     renderContentBlocks();
-    renderIconOptions();
     scheduleMarkerRender();
   }
   draggingHotspotId = hotspotId;
@@ -1927,7 +1914,6 @@ function stopMarkerDrag(event) {
       renderHotspotList();
       renderLinkEditor();
       renderContentBlocks();
-      renderIconOptions();
       updateStatus(`Link ${hotspot.linkCode || hotspot.title || hotspot.id} selected.`);
     }
   }
@@ -2233,49 +2219,6 @@ function renderHotspotList() {
   }
 
   scheduleMarkerRender();
-}
-
-function renderIconOptions() {
-  const icons = state.project?.assets?.icons || [];
-  const hotspot = getSelectedHotspot();
-  iconSelect.innerHTML = '';
-
-  if (icons.length === 0) {
-    const option = document.createElement('option');
-    option.value = '';
-    option.textContent = 'No icons available';
-    iconSelect.appendChild(option);
-    return;
-  }
-
-  icons.forEach((icon) => {
-    const option = document.createElement('option');
-    option.value = icon.id;
-    option.textContent = icon.name || icon.id;
-    if (hotspot && icon.id === hotspot.iconId) {
-      option.selected = true;
-    }
-    iconSelect.appendChild(option);
-  });
-}
-
-function renderMediaList() {
-  mediaList.innerHTML = '';
-  const mediaItems = state.project?.assets?.media || [];
-  if (mediaItems.length === 0) {
-    const empty = document.createElement('div');
-    empty.className = 'media-item';
-    empty.textContent = 'No media assets yet.';
-    mediaList.appendChild(empty);
-    return;
-  }
-
-  mediaItems.forEach((media) => {
-    const row = document.createElement('div');
-    row.className = 'media-item';
-    row.innerHTML = `<strong>${media.name || media.id}</strong><span>${media.type}</span>`;
-    mediaList.appendChild(row);
-  });
 }
 
 function renderFloorplans() {
@@ -3035,7 +2978,6 @@ function createHotspotRecord(title, contentBlocks, extra = null) {
     id: `hs-${Date.now()}-${Math.floor(Math.random() * 100000)}`,
     yaw: 0,
     pitch: 0,
-    iconId: state.project.assets.icons[0]?.id || '',
     title: title || 'Hotspot',
     contentBlocks: contentBlocks || [],
     ...(extra || {})
@@ -3203,7 +3145,6 @@ function addSceneLinkBlock() {
   renderHotspotList();
   renderLinkEditor();
   renderContentBlocks();
-  renderIconOptions();
   updateStatus(`New link ${linkCode} ready. Double-click on the panorama to place it. Press Done to cancel.`);
 }
 
@@ -3436,7 +3377,6 @@ function createResetProjectPayload() {
     ],
     scenes: [],
     assets: {
-      icons: [],
       media: []
     },
     minimap: {
@@ -3456,7 +3396,7 @@ function resetProjectWithConfirmation() {
     '- all generated tiles',
     '- all hotspots and links',
     '- all map/floorplan data',
-    '- all uploaded media and icons',
+    '- all uploaded media',
     '',
     'Type "reset" to continue:'
   ].join('\n');
@@ -3514,15 +3454,6 @@ async function exportStaticPackage() {
   const project = JSON.parse(JSON.stringify(state.project));
 
   const assetDownloads = [];
-
-  project.assets.icons.forEach((icon) => {
-    if (icon.dataUrl) {
-      const fileInfo = dataUrlToFile(icon.dataUrl, icon.name || icon.id);
-      icon.path = `icons/${fileInfo.filename}`;
-      delete icon.dataUrl;
-      assetDownloads.push({ ...fileInfo, folder: 'icons', outputPath: `viewer/icons/${fileInfo.filename}` });
-    }
-  });
 
   project.assets.media.forEach((media) => {
     if (media.dataUrl) {
@@ -3735,55 +3666,6 @@ function importProjectFile(file) {
     }
   };
   reader.readAsText(file);
-}
-
-function uploadIconFile(file) {
-  const reader = new FileReader();
-  reader.onload = () => {
-    const id = `icon-${Date.now()}`;
-    state.project.assets.icons.push({
-      id,
-      name: file.name,
-      dataUrl: reader.result
-    });
-    const hotspot = getSelectedHotspot();
-    if (hotspot) {
-      hotspot.iconId = id;
-    }
-    renderIconOptions();
-    autosave();
-  };
-  reader.readAsDataURL(file);
-}
-
-function uploadMediaFile(file) {
-  const type = file.type.startsWith('image/')
-    ? 'image'
-    : file.type.startsWith('audio/')
-    ? 'audio'
-    : file.type.startsWith('video/')
-    ? 'video'
-    : null;
-
-  if (!type) {
-    updateStatus('Unsupported media type.');
-    return;
-  }
-
-  const reader = new FileReader();
-  reader.onload = () => {
-    const id = `${type}-${Date.now()}`;
-    state.project.assets.media.push({
-      id,
-      name: file.name,
-      type,
-      dataUrl: reader.result
-    });
-    renderMediaList();
-    renderContentBlocks();
-    autosave();
-  };
-  reader.readAsDataURL(file);
 }
 
 function uploadFloorplanFile(file) {
@@ -4856,13 +4738,6 @@ linkCommentInput.addEventListener('input', (event) => {
   }
 });
 
-iconSelect.addEventListener('change', (event) => {
-  const hotspot = getSelectedHotspot();
-  if (!hotspot) return;
-  hotspot.iconId = event.target.value;
-  autosave();
-});
-
 linkSelect.addEventListener('change', (event) => {
   const hotspotId = event.target.value;
   if (!hotspotId) return;
@@ -4870,14 +4745,12 @@ linkSelect.addEventListener('change', (event) => {
     state.selectedHotspotId = null;
     renderLinkEditor();
     renderContentBlocks();
-    renderIconOptions();
     scheduleMarkerRender();
     return;
   }
   state.selectedHotspotId = hotspotId;
   renderLinkEditor();
   renderContentBlocks();
-  renderIconOptions();
   scheduleMarkerRender();
 });
 
@@ -4885,8 +4758,6 @@ btnSave.addEventListener('click', () => saveDraft(state.project));
 btnExport.addEventListener('click', exportProject);
 btnExportStatic.addEventListener('click', exportStaticPackage);
 btnImport.addEventListener('click', () => fileImport.click());
-btnUploadIcon.addEventListener('click', () => fileIcon.click());
-btnUploadMedia.addEventListener('click', () => fileMedia.click());
 btnUploadFloorplan.addEventListener('click', () => fileFloorplan.click());
 btnDeleteFloorplan.addEventListener('click', deleteFloorplan);
 btnFloorplanPlaceScene?.addEventListener('click', () => {
@@ -5032,22 +4903,6 @@ fileImport.addEventListener('change', (event) => {
   if (file) {
     importProjectFile(file);
   }
-});
-
-fileIcon.addEventListener('change', (event) => {
-  const file = event.target.files[0];
-  if (file) {
-    uploadIconFile(file);
-  }
-  fileIcon.value = '';
-});
-
-fileMedia.addEventListener('change', (event) => {
-  const file = event.target.files[0];
-  if (file) {
-    uploadMediaFile(file);
-  }
-  fileMedia.value = '';
 });
 
 fileFloorplan.addEventListener('change', (event) => {

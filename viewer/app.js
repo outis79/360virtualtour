@@ -20,14 +20,13 @@ const fallbackProject = {
           id: 'hs-altar',
           yaw: 0,
           pitch: 0,
-          iconId: 'info',
           title: 'Main Altar',
           contentBlocks: [{ type: 'text', value: 'Sample content.' }]
         }
       ]
     }
   ],
-  assets: { icons: [], media: [] },
+  assets: { media: [] },
   groups: [{ id: 'group-default', name: 'Default' }],
   minimap: { floorplans: [] }
 };
@@ -169,7 +168,8 @@ function normalizeProject(rawProject) {
   const scenes = Array.isArray(project.scenes) ? project.scenes : [];
 
   project.scenes = scenes;
-  project.assets = project.assets || { icons: [], media: [] };
+  project.assets = project.assets || {};
+  project.assets.media = Array.isArray(project.assets.media) ? project.assets.media : [];
   project.groups = Array.isArray(project.groups) ? project.groups.filter((group) => group?.id) : [];
 
   if (!project.groups.length) {
@@ -252,13 +252,9 @@ function resolveAssetPaths(project) {
   const mediaMap = new Map(
     (project.assets?.media || []).map((m) => [m.id, m.dataUrl || m.path || ''])
   );
-  const iconMap = new Map(
-    (project.assets?.icons || []).map((i) => [i.id, i.dataUrl || i.path || ''])
-  );
 
   project.scenes.forEach((scene) => {
     (scene.hotspots || []).forEach((hotspot) => {
-      hotspot.iconPath = iconMap.get(hotspot.iconId) || '';
       (hotspot.contentBlocks || []).forEach((block) => {
         if (block.assetId) {
           block.assetPath = mediaMap.get(block.assetId) || '';
@@ -425,19 +421,7 @@ function createHotspotElement(hotspot) {
     }
   };
 
-  if (!isSceneLink && hotspot.iconPath) {
-    const img = document.createElement('img');
-    img.src = hotspot.iconPath;
-    img.alt = '';
-    img.className = 'hotspot-icon';
-    img.addEventListener('error', () => {
-      img.remove();
-      applyDefaultStyle();
-    });
-    wrapper.appendChild(img);
-  } else {
-    applyDefaultStyle();
-  }
+  applyDefaultStyle();
 
   wrapper.addEventListener('click', () => {
     const targetScene = getHotspotSceneTargetRuntime(hotspot);

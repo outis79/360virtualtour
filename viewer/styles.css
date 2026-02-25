@@ -324,12 +324,6 @@ body.vr-mode .pano-vr {
   transform-origin: center center;
 }
 
-.hotspot-icon {
-  width: 62%;
-  height: 62%;
-  object-fit: contain;
-}
-
 .hotspot-default {
   color: transparent;
 }
