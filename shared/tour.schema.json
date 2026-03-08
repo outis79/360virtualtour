@@ -25,6 +25,48 @@
       }
     },
     "activeGroupId": { "type": ["string", "null"] },
+    "homePage": {
+      "type": "object",
+      "properties": {
+        "richContentHtml": { "type": "string" },
+        "infoFrameSize": {
+          "type": "object",
+          "properties": {
+            "width": { "type": "number" },
+            "height": { "type": "number" }
+          }
+        },
+        "infoFramePosition": {
+          "type": "object",
+          "properties": {
+            "left": { "type": "number" },
+            "top": { "type": "number" }
+          }
+        },
+        "infoFrameViewport": {
+          "type": "object",
+          "properties": {
+            "width": { "type": "number" },
+            "height": { "type": "number" }
+          }
+        },
+        "infoFrameAnchorOffset": {
+          "type": ["object", "null"],
+          "properties": {
+            "offsetX": { "type": "number" },
+            "offsetY": { "type": "number" }
+          }
+        },
+        "editorVisualStyle": {
+          "type": "object",
+          "properties": {
+            "backgroundColorKey": { "type": "string" },
+            "backgroundTransparency": { "type": "number" },
+            "backgroundOpacity": { "type": "number" }
+          }
+        }
+      }
+    },
     "scenes": {
       "type": "array",
       "items": {

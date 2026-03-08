@@ -7,28 +7,11 @@ const fallbackProject = {
     gyroEnabled: false,
     vrEnabled: true
   },
-  scenes: [
-    {
-      id: 'scene-entrance',
-      groupId: 'group-default',
-      name: 'Entrance',
-      levels: [{ tileSize: 256, size: 256, fallbackOnly: true }],
-      faceSize: 2048,
-      initialViewParameters: { yaw: 0, pitch: 0, fov: 1.4 },
-      hotspots: [
-        {
-          id: 'hs-altar',
-          yaw: 0,
-          pitch: 0,
-          title: 'Main Altar',
-          contentBlocks: [{ type: 'text', value: 'Sample content.' }]
-        }
-      ]
-    }
-  ],
+  homePage: {},
+  scenes: [],
   assets: { media: [] },
-  activeGroupId: 'group-default',
-  groups: [{ id: 'group-default', name: 'Default' }],
+  activeGroupId: null,
+  groups: [],
   minimap: { floorplans: [] }
 };
 
@@ -45,6 +28,10 @@ const btnFloorplanZoomOut = document.getElementById('btn-floorplan-zoom-out');
 const btnFloorplanZoomIn = document.getElementById('btn-floorplan-zoom-in');
 const btnFloorplanZoomReset = document.getElementById('btn-floorplan-zoom-reset');
 const floorplanZoomValue = document.getElementById('floorplan-zoom-value');
+const homePageOverlay = document.getElementById('home-page-overlay');
+const homePageFrame = document.getElementById('home-page-frame');
+const homePageBody = document.getElementById('home-page-body');
+const btnHomePageStart = document.getElementById('btn-home-page-start');
 const modal = document.getElementById('hotspot-modal');
 const modalContent = modal?.querySelector('.modal-content');
 const modalTitle = document.getElementById('modal-title');
@@ -66,6 +53,7 @@ let projectData = null;
 let activeGroupId = null;
 let floorplansByGroup = new Map();
 let floorplanZoomByGroup = new Map();
+let homePageVisible = false;
 
 const FLOORPLAN_COLOR_MAP = {
   yellow: '#f0c84b',
@@ -79,10 +67,16 @@ const FLOORPLAN_COLOR_MAP = {
 const TEXT_ALIGN_VALUES = new Set(['left', 'center', 'right', 'justify']);
 const DEFAULT_INFO_FRAME_WIDTH = 920;
 const DEFAULT_INFO_FRAME_HEIGHT = 460;
+const DEFAULT_INFO_FRAME_LEFT = 320;
+const DEFAULT_INFO_FRAME_TOP = 112;
 const MIN_INFO_FRAME_WIDTH = 44;
 const MAX_INFO_FRAME_WIDTH = 2400;
 const MIN_INFO_FRAME_HEIGHT = 30;
 const MAX_INFO_FRAME_HEIGHT = 1800;
+const DEFAULT_INFO_FRAME_VIEWPORT_WIDTH = 1366;
+const DEFAULT_INFO_FRAME_VIEWPORT_HEIGHT = 768;
+const DEFAULT_INFO_BG_COLOR_KEY = 'black';
+const DEFAULT_INFO_BG_TRANSPARENCY = 60;
 
 function normalizeTextAlign(value) {
   const candidate = String(value || 'left').trim().toLowerCase();
@@ -110,6 +104,75 @@ function normalizeInfoFrameSize(value) {
       MAX_INFO_FRAME_HEIGHT,
       DEFAULT_INFO_FRAME_HEIGHT
     )
+  };
+}
+
+function clampInfoFramePosition(value, fallback) {
+  const numeric = Number.parseInt(String(value ?? ''), 10);
+  if (!Number.isFinite(numeric)) return fallback;
+  return Math.max(8, Math.round(numeric));
+}
+
+function normalizeInfoFramePosition(value) {
+  const source = value && typeof value === 'object' ? value : {};
+  return {
+    left: clampInfoFramePosition(source.left, DEFAULT_INFO_FRAME_LEFT),
+    top: clampInfoFramePosition(source.top, DEFAULT_INFO_FRAME_TOP)
+  };
+}
+
+function normalizeInfoFrameViewport(value) {
+  const source = value && typeof value === 'object' ? value : {};
+  const widthRaw = Number.parseInt(String(source.width ?? ''), 10);
+  const heightRaw = Number.parseInt(String(source.height ?? ''), 10);
+  return {
+    width: Number.isFinite(widthRaw)
+      ? Math.max(1, Math.min(10000, Math.round(widthRaw)))
+      : DEFAULT_INFO_FRAME_VIEWPORT_WIDTH,
+    height: Number.isFinite(heightRaw)
+      ? Math.max(1, Math.min(10000, Math.round(heightRaw)))
+      : DEFAULT_INFO_FRAME_VIEWPORT_HEIGHT
+  };
+}
+
+function sanitizeInfoBackgroundTransparencyPercent(value, fallback = DEFAULT_INFO_BG_TRANSPARENCY) {
+  const numeric = Number.parseInt(String(value ?? ''), 10);
+  if (!Number.isFinite(numeric)) return fallback;
+  return Math.max(0, Math.min(100, Math.round(numeric)));
+}
+
+function getFrameVisualStyle(target) {
+  const raw = target?.editorVisualStyle;
+  if (!raw || typeof raw !== 'object') {
+    return {
+      backgroundColorKey: DEFAULT_INFO_BG_COLOR_KEY,
+      backgroundTransparency: DEFAULT_INFO_BG_TRANSPARENCY
+    };
+  }
+  const colorKey = normalizeFloorplanColorKey(raw.backgroundColorKey || DEFAULT_INFO_BG_COLOR_KEY);
+  let transparencyPercent;
+  if (raw.backgroundTransparency !== undefined) {
+    transparencyPercent = sanitizeInfoBackgroundTransparencyPercent(raw.backgroundTransparency, DEFAULT_INFO_BG_TRANSPARENCY);
+  } else if (raw.backgroundOpacity !== undefined) {
+    const legacyOpacity = sanitizeInfoBackgroundTransparencyPercent(raw.backgroundOpacity, 100 - DEFAULT_INFO_BG_TRANSPARENCY);
+    transparencyPercent = 100 - legacyOpacity;
+  } else {
+    transparencyPercent = DEFAULT_INFO_BG_TRANSPARENCY;
+  }
+  return {
+    backgroundColorKey: colorKey,
+    backgroundTransparency: transparencyPercent
+  };
+}
+
+function getScaledInfoFramePositionForViewport(target, viewportWidth = window.innerWidth, viewportHeight = window.innerHeight) {
+  const pos = normalizeInfoFramePosition(target?.infoFramePosition);
+  const baseViewport = normalizeInfoFrameViewport(target?.infoFrameViewport);
+  const currentWidth = Math.max(1, Math.round(viewportWidth || baseViewport.width));
+  const currentHeight = Math.max(1, Math.round(viewportHeight || baseViewport.height));
+  return {
+    left: Math.round((pos.left / Math.max(1, baseViewport.width)) * currentWidth),
+    top: Math.round((pos.top / Math.max(1, baseViewport.height)) * currentHeight)
   };
 }
 
@@ -678,6 +741,83 @@ function trimTrailingEmptyParagraphs(container) {
   }
 }
 
+function getProjectHomePage(project = projectData) {
+  if (!project || !project.homePage || typeof project.homePage !== 'object') return null;
+  return {
+    ...project.homePage,
+    richContentHtml: typeof project.homePage.richContentHtml === 'string' ? project.homePage.richContentHtml : '',
+    infoFrameSize: normalizeInfoFrameSize(project.homePage.infoFrameSize),
+    infoFramePosition: normalizeInfoFramePosition(project.homePage.infoFramePosition),
+    infoFrameViewport: normalizeInfoFrameViewport(project.homePage.infoFrameViewport)
+  };
+}
+
+function hasHomePageContent(project = projectData) {
+  const homePage = getProjectHomePage(project);
+  if (!homePage) return false;
+  return Boolean(String(homePage.richContentHtml || '').trim());
+}
+
+function closeHomePageOverlay() {
+  homePageVisible = false;
+  if (!homePageOverlay || !homePageBody || !homePageFrame) return;
+  homePageBody.innerHTML = '';
+  homePageOverlay.classList.add('hidden');
+  homePageOverlay.setAttribute('aria-hidden', 'true');
+  homePageFrame.style.removeProperty('width');
+  homePageFrame.style.removeProperty('height');
+  homePageFrame.style.removeProperty('left');
+  homePageFrame.style.removeProperty('top');
+  homePageFrame.style.removeProperty('background-color');
+}
+
+function applyHomePageFrame(project = projectData) {
+  const homePage = getProjectHomePage(project);
+  if (!homePage || !homePageFrame || !homePageOverlay) return;
+  const overlayRect = homePageOverlay.getBoundingClientRect();
+  const maxWidth = Math.max(MIN_INFO_FRAME_WIDTH, Math.floor(overlayRect.width - 16));
+  const maxHeight = Math.max(MIN_INFO_FRAME_HEIGHT, Math.floor(overlayRect.height - 16));
+  const frame = normalizeInfoFrameSize(homePage.infoFrameSize);
+  const width = Math.min(frame.width, maxWidth);
+  const height = Math.min(frame.height, maxHeight);
+  const framePosition = getScaledInfoFramePositionForViewport(homePage, overlayRect.width, overlayRect.height);
+  const maxLeft = Math.max(8, overlayRect.width - width - 8);
+  const maxTop = Math.max(8, overlayRect.height - height - 8);
+  const left = Math.round(Math.min(maxLeft, Math.max(8, framePosition.left)));
+  const top = Math.round(Math.min(maxTop, Math.max(8, framePosition.top)));
+  homePageFrame.style.width = `${width}px`;
+  homePageFrame.style.height = `${height}px`;
+  homePageFrame.style.left = `${left}px`;
+  homePageFrame.style.top = `${top}px`;
+  const visualStyle = getFrameVisualStyle(homePage);
+  const hex = FLOORPLAN_COLOR_MAP[visualStyle.backgroundColorKey] || FLOORPLAN_COLOR_MAP[DEFAULT_INFO_BG_COLOR_KEY];
+  const alpha = (100 - visualStyle.backgroundTransparency) / 100;
+  homePageFrame.style.backgroundColor = withAlpha(hex, alpha);
+}
+
+function renderHomePage(project = projectData) {
+  if (!homePageOverlay || !homePageBody || !homePageFrame) return;
+  if (!hasHomePageContent(project)) {
+    closeHomePageOverlay();
+    return;
+  }
+  const homePage = getProjectHomePage(project);
+  const wrapper = document.createElement('div');
+  wrapper.className = 'block home-page-block';
+  wrapper.innerHTML = sanitizeRichHtml(homePage.richContentHtml);
+  trimTrailingEmptyParagraphs(wrapper);
+  resolveRichMediaReferencesInContainer(wrapper, project, { preferDataUrl: false });
+  homePageBody.innerHTML = '';
+  homePageBody.appendChild(wrapper);
+  homePageVisible = true;
+  homePageOverlay.classList.remove('hidden');
+  homePageOverlay.setAttribute('aria-hidden', 'false');
+  if (btnHomePageStart) {
+    btnHomePageStart.disabled = !scenes.length;
+  }
+  applyHomePageFrame(project);
+}
+
 function openModal(hotspot) {
   modalTitle.textContent = hotspot.title || 'Hotspot';
   modalBody.innerHTML = '';
@@ -814,6 +954,11 @@ function normalizeProject(rawProject) {
   project.scenes = scenes;
   project.assets = project.assets || {};
   project.assets.media = Array.isArray(project.assets.media) ? project.assets.media : [];
+  project.homePage = project.homePage && typeof project.homePage === 'object' ? project.homePage : {};
+  project.homePage.richContentHtml = typeof project.homePage.richContentHtml === 'string' ? project.homePage.richContentHtml : '';
+  project.homePage.infoFrameSize = normalizeInfoFrameSize(project.homePage.infoFrameSize);
+  project.homePage.infoFramePosition = normalizeInfoFramePosition(project.homePage.infoFramePosition);
+  project.homePage.infoFrameViewport = normalizeInfoFrameViewport(project.homePage.infoFrameViewport);
   project.groups = Array.isArray(project.groups) ? project.groups.filter((group) => group?.id) : [];
 
   if (!project.groups.length) {
@@ -1010,6 +1155,7 @@ function buildViewer(project) {
   } else {
     renderSceneList();
   }
+  renderHomePage(project);
 }
 
 function buildVrViewers(project) {
@@ -1547,3 +1693,9 @@ groupSelect?.addEventListener('change', () => {
 });
 
 document.getElementById('btn-close-modal').addEventListener('click', closeModal);
+btnHomePageStart?.addEventListener('click', closeHomePageOverlay);
+window.addEventListener('resize', () => {
+  if (homePageVisible) {
+    applyHomePageFrame(projectData);
+  }
+});

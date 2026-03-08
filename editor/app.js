@@ -13,6 +13,9 @@ const fallbackProject = {
     gyroEnabled: false,
     vrEnabled: true
   },
+  homePage: {
+    richContentHtml: ''
+  },
   scenes: [],
   groups: [],
   assets: {
@@ -58,6 +61,8 @@ const infoHotspotSelect = document.getElementById('info-hotspot-select');
 const infoHotspotColorSelect = document.getElementById('info-hotspot-color');
 const contentBlocks = document.getElementById('content-blocks');
 const infoContentSectionBody = contentBlocks?.closest('.section-body') || null;
+const richContentTitle = document.getElementById('rich-content-title');
+const richContentHint = document.getElementById('rich-content-hint');
 const sceneTitle = document.getElementById('scene-title');
 const projectNameInput = document.getElementById('project-name');
 const projectFovInput = null;
@@ -66,6 +71,8 @@ const btnAddGroup = document.getElementById('btn-add-group');
 const btnRenameGroup = document.getElementById('btn-rename-group');
 const btnSetMainGroup = document.getElementById('btn-set-main-group');
 const btnDeleteGroup = document.getElementById('btn-delete-group');
+const btnEditHomePage = document.getElementById('btn-edit-home-page');
+const btnSaveHomePage = document.getElementById('btn-save-home-page');
 const btnImport = document.getElementById('btn-import');
 const btnSave = document.getElementById('btn-save');
 const btnExport = document.getElementById('btn-export');
@@ -205,6 +212,7 @@ let previewHotspotContext = null;
 let previewModalDragState = null;
 let infoHotspotCreateMode = false;
 let infoHotspotEditMode = false;
+let homePageEditMode = false;
 
 const FLOORPLAN_COLOR_MAP = {
   yellow: '#f0c84b',
@@ -1454,6 +1462,37 @@ function setInfoHotspotRichContent(hotspot, html) {
   }
 }
 
+function getProjectHomePage() {
+  if (!state.project) return null;
+  if (!state.project.homePage || typeof state.project.homePage !== 'object') {
+    state.project.homePage = {};
+  }
+  const homePage = state.project.homePage;
+  if (typeof homePage.richContentHtml !== 'string') {
+    homePage.richContentHtml = '';
+  }
+  homePage.infoFrameSize = normalizeInfoFrameSize(homePage.infoFrameSize);
+  homePage.infoFramePosition = normalizeInfoFramePosition(homePage.infoFramePosition);
+  homePage.infoFrameViewport = normalizeInfoFrameViewport(homePage.infoFrameViewport);
+  homePage.infoFrameAnchorOffset = normalizeInfoFrameAnchorOffset(homePage.infoFrameAnchorOffset);
+  return homePage;
+}
+
+function getRichContentTargetByContext(context) {
+  if (!context) return null;
+  if (context.type === 'home-page') {
+    return getProjectHomePage();
+  }
+  return getInfoHotspotByContext(context);
+}
+
+function isRichEditorContextMatch(context) {
+  if (!context || !richEditorModal?.classList.contains('visible') || !richEditorContext) return false;
+  if (richEditorContext.type !== context.type) return false;
+  if (context.type === 'home-page') return true;
+  return richEditorContext.sceneId === context.sceneId && richEditorContext.hotspotId === context.hotspotId;
+}
+
 function insertIntoTextarea(textarea, value) {
   if (!textarea) return;
   const start = textarea.selectionStart ?? textarea.value.length;
@@ -2541,6 +2580,9 @@ function deleteCurrentRichParagraph() {
 }
 
 function getInfoHotspotByContext(context) {
+  if (context?.type === 'home-page') {
+    return getProjectHomePage();
+  }
   if (!context?.sceneId || !context?.hotspotId || !state.project) return null;
   const scene = state.project.scenes.find((item) => item.id === context.sceneId);
   if (!scene) return null;
@@ -2553,13 +2595,14 @@ function getPreviewHotspotByContext() {
   return getInfoHotspotByContext(previewHotspotContext);
 }
 
-function openRichEditorModal(hotspot = getSelectedInfoHotspot()) {
+function openRichEditorModal(hotspot = getSelectedInfoHotspot(), options = {}) {
   if (!hotspot || !richEditorModal || !richEditorSurface) {
-    updateStatus('Select an info hotspot first.');
+    updateStatus('Select content to edit first.');
     return;
   }
-  const scene = getSelectedScene();
-  if (!scene) {
+  const contextType = options.type || (hotspot === getProjectHomePage() ? 'home-page' : 'info-hotspot');
+  const scene = contextType === 'home-page' ? null : getSelectedScene();
+  if (contextType !== 'home-page' && !scene) {
     updateStatus('Select a scene first.');
     return;
   }
@@ -2567,15 +2610,23 @@ function openRichEditorModal(hotspot = getSelectedInfoHotspot()) {
   const isSwitchingContext =
     richEditorModal.classList.contains('visible') &&
     richEditorContext &&
-    (richEditorContext.sceneId !== scene.id || richEditorContext.hotspotId !== hotspot.id);
+    (
+      richEditorContext.type !== contextType ||
+      (contextType !== 'home-page' && (
+        richEditorContext.sceneId !== scene.id || richEditorContext.hotspotId !== hotspot.id
+      ))
+    );
   if (isSwitchingContext) {
     saveRichEditorModalContent({ closeAfterSave: false, refreshPanel: false });
   }
 
-  richEditorContext = {
-    sceneId: scene.id,
-    hotspotId: hotspot.id
-  };
+  richEditorContext = contextType === 'home-page'
+    ? { type: 'home-page' }
+    : {
+        type: 'info-hotspot',
+        sceneId: scene.id,
+        hotspotId: hotspot.id
+      };
 
   const sourceHtml = sanitizeRichHtml(getInfoHotspotRichContent(hotspot));
   const template = document.createElement('template');
@@ -2626,20 +2677,24 @@ function closeRichEditorModal() {
   richEditorContext = null;
 }
 
-function openRichSourceModal(hotspot = getSelectedInfoHotspot()) {
+function openRichSourceModal(hotspot = getSelectedInfoHotspot(), options = {}) {
   if (!hotspot || !richSourceModal || !richSourceTextarea) {
-    updateStatus('Select an info hotspot first.');
+    updateStatus('Select content to edit first.');
     return;
   }
-  const scene = getSelectedScene();
-  if (!scene) {
+  const contextType = options.type || (hotspot === getProjectHomePage() ? 'home-page' : 'info-hotspot');
+  const scene = contextType === 'home-page' ? null : getSelectedScene();
+  if (contextType !== 'home-page' && !scene) {
     updateStatus('Select a scene first.');
     return;
   }
-  richSourceContext = {
-    sceneId: scene.id,
-    hotspotId: hotspot.id
-  };
+  richSourceContext = contextType === 'home-page'
+    ? { type: 'home-page' }
+    : {
+        type: 'info-hotspot',
+        sceneId: scene.id,
+        hotspotId: hotspot.id
+      };
   richSourceTextarea.value = getInfoHotspotRichContent(hotspot);
   richSourceModal.classList.add('visible');
   richSourceModal.setAttribute('aria-hidden', 'false');
@@ -2893,6 +2948,12 @@ function loadProject(project) {
   project.scenes = project.scenes || [];
   project.assets = project.assets || {};
   project.assets.media = Array.isArray(project.assets.media) ? project.assets.media : [];
+  project.homePage = project.homePage && typeof project.homePage === 'object' ? project.homePage : {};
+  project.homePage.richContentHtml = typeof project.homePage.richContentHtml === 'string' ? project.homePage.richContentHtml : '';
+  project.homePage.infoFrameSize = normalizeInfoFrameSize(project.homePage.infoFrameSize);
+  project.homePage.infoFramePosition = normalizeInfoFramePosition(project.homePage.infoFramePosition);
+  project.homePage.infoFrameViewport = normalizeInfoFrameViewport(project.homePage.infoFrameViewport);
+  project.homePage.infoFrameAnchorOffset = normalizeInfoFrameAnchorOffset(project.homePage.infoFrameAnchorOffset);
 
   const defaultGroupId = project.groups[0].id;
   project.activeGroupId = project.groups.some((group) => group.id === project.activeGroupId)
@@ -2978,6 +3039,7 @@ function loadProject(project) {
 
 function renderAll() {
   syncOpenRichEditorContexts();
+  updateInfoHotspotModeButtons();
   renderSceneGroupOptions();
   renderSceneList();
   renderSceneCommentField();
@@ -5006,6 +5068,17 @@ function isInfoHotspotInteractionModeActive() {
   return infoHotspotCreateMode || infoHotspotEditMode;
 }
 
+function updateHomePageButtons() {
+  if (btnEditHomePage) {
+    btnEditHomePage.classList.toggle('active', homePageEditMode);
+    btnEditHomePage.textContent = homePageEditMode ? 'Edit ON' : 'Edit';
+    btnEditHomePage.setAttribute('aria-pressed', homePageEditMode ? 'true' : 'false');
+  }
+  if (btnSaveHomePage) {
+    btnSaveHomePage.disabled = !homePageEditMode;
+  }
+}
+
 function updateInfoHotspotModeButtons() {
   if (btnAddHotspot) {
     btnAddHotspot.classList.toggle('active', infoHotspotCreateMode);
@@ -5024,6 +5097,7 @@ function updateInfoHotspotModeButtons() {
       isInfoHotspotInteractionModeActive();
     btnSaveHotspot.disabled = !canSave;
   }
+  updateHomePageButtons();
 }
 
 function setInfoHotspotCreateMode(nextMode, { silent = false } = {}) {
@@ -5040,6 +5114,9 @@ function setInfoHotspotCreateMode(nextMode, { silent = false } = {}) {
     if (richEditorModal?.classList.contains('visible')) {
       saveRichEditorModalContent({ closeAfterSave: true, refreshPanel: true });
     }
+  }
+  if (next && homePageEditMode) {
+    setHomePageEditMode(false, { silent: true });
   }
   infoHotspotCreateMode = next;
   if (next) {
@@ -5071,6 +5148,9 @@ function setInfoHotspotEditMode(nextMode, { silent = false } = {}) {
     if (infoHotspotCreateMode) {
       infoHotspotCreateMode = false;
     }
+    if (homePageEditMode) {
+      setHomePageEditMode(false, { silent: true });
+    }
     infoHotspotEditMode = true;
     hideHotspotHoverCard();
     closeHotspotPreview();
@@ -5098,6 +5178,58 @@ function toggleInfoHotspotCreateMode() {
 
 function toggleInfoHotspotEditMode() {
   setInfoHotspotEditMode(!infoHotspotEditMode);
+}
+
+function setHomePageEditMode(nextMode, { silent = false } = {}) {
+  const next = Boolean(nextMode);
+  if (next) {
+    if (placementMode) {
+      togglePlacementMode();
+    }
+    if (infoHotspotCreateMode) {
+      infoHotspotCreateMode = false;
+    }
+    if (infoHotspotEditMode) {
+      infoHotspotEditMode = false;
+    }
+    if (richSourceModal?.classList.contains('visible') && richSourceContext?.type !== 'home-page') {
+      saveRichSourceModalContent({ closeAfterSave: true, refreshPanel: false });
+    }
+    hideHotspotHoverCard();
+    closeHotspotPreview();
+    homePageEditMode = true;
+    openRichEditorModal(getProjectHomePage(), { type: 'home-page' });
+  } else {
+    homePageEditMode = false;
+    if (richEditorModal?.classList.contains('visible') && richEditorContext?.type === 'home-page') {
+      saveRichEditorModalContent({ closeAfterSave: true, refreshPanel: true });
+    }
+    if (richSourceModal?.classList.contains('visible') && richSourceContext?.type === 'home-page') {
+      saveRichSourceModalContent({ closeAfterSave: true, refreshPanel: true });
+    }
+  }
+  updateInfoHotspotModeButtons();
+  renderContentBlocks();
+  if (!silent) {
+    updateStatus(next ? 'Home Page edit mode ON.' : 'Home Page edit mode OFF.');
+  }
+}
+
+function toggleHomePageEditMode() {
+  setHomePageEditMode(!homePageEditMode);
+}
+
+function saveHomePageState() {
+  const homePage = getProjectHomePage();
+  if (!homePage) return;
+  if (richEditorModal?.classList.contains('visible') && richEditorContext?.type === 'home-page') {
+    saveRichEditorModalContent({ closeAfterSave: false, refreshPanel: true });
+  }
+  if (richSourceModal?.classList.contains('visible') && richSourceContext?.type === 'home-page') {
+    saveRichSourceModalContent({ closeAfterSave: false, refreshPanel: true });
+  }
+  autosave();
+  updateStatus('Home Page saved.');
 }
 
 function clearPendingSceneLinkDraft(shouldRender = true) {
@@ -5543,12 +5675,25 @@ function getSceneName(sceneId) {
 
 function renderContentBlocks() {
   contentBlocks.innerHTML = '';
-  const hotspot = getSelectedInfoHotspot();
-  const scene = getSelectedScene();
-  const infoContentEnabled = isInfoHotspotInteractionModeActive();
+  const homePage = getProjectHomePage();
+  const editingHomePage = homePageEditMode;
+  const hotspot = editingHomePage ? homePage : getSelectedInfoHotspot();
+  const scene = editingHomePage ? null : getSelectedScene();
+  const infoContentEnabled = editingHomePage || isInfoHotspotInteractionModeActive();
+  const editorContext = editingHomePage
+    ? { type: 'home-page' }
+    : (scene && hotspot ? { type: 'info-hotspot', sceneId: scene.id, hotspotId: hotspot.id } : null);
   if (infoContentSectionBody) {
     infoContentSectionBody.hidden = !infoContentEnabled;
     infoContentSectionBody.setAttribute('aria-hidden', infoContentEnabled ? 'false' : 'true');
+  }
+  if (richContentTitle) {
+    richContentTitle.textContent = editingHomePage ? 'Home Page Content' : 'Info Content';
+  }
+  if (richContentHint) {
+    richContentHint.textContent = editingHomePage
+      ? 'Edit the welcome page shown before the tour starts.'
+      : 'Use one rich content editor per info hotspot. Mix text, image, and video inline.';
   }
   if (!infoContentEnabled) {
     return;
@@ -5556,7 +5701,9 @@ function renderContentBlocks() {
   if (!hotspot) {
     const hint = document.createElement('div');
     hint.className = 'panel-hint';
-    hint.textContent = 'Select an info hotspot to edit rich content.';
+    hint.textContent = editingHomePage
+      ? 'Home page is not available.'
+      : 'Select an info hotspot to edit rich content.';
     contentBlocks.appendChild(hint);
     return;
   }
@@ -5568,11 +5715,7 @@ function renderContentBlocks() {
   const btnOpenVisualEditor = document.createElement('button');
   btnOpenVisualEditor.className = 'btn';
   btnOpenVisualEditor.type = 'button';
-  const visualEditorOpenForHotspot = Boolean(
-    richEditorModal?.classList.contains('visible') &&
-    richEditorContext?.sceneId === scene?.id &&
-    richEditorContext?.hotspotId === hotspot.id
-  );
+  const visualEditorOpenForHotspot = isRichEditorContextMatch(editorContext);
   btnOpenVisualEditor.textContent = visualEditorOpenForHotspot ? 'Close Visual Editor' : 'Open Visual Editor';
   toolbar.appendChild(btnOpenVisualEditor);
 
@@ -5863,11 +6006,7 @@ function renderContentBlocks() {
     if (control) control.disabled = !infoContentEnabled;
   });
 
-  const isVisualEditorActiveForHotspot = () => Boolean(
-    richEditorModal?.classList.contains('visible') &&
-    richEditorContext?.sceneId === scene?.id &&
-    richEditorContext?.hotspotId === hotspot.id
-  );
+  const isVisualEditorActiveForHotspot = () => isRichEditorContextMatch(editorContext);
 
   const runVisualEditorAction = (action, { save = true } = {}) => {
     if (!isVisualEditorActiveForHotspot()) return false;
@@ -5906,7 +6045,7 @@ function renderContentBlocks() {
   };
 
   btnOpenRichSource.addEventListener('click', () => {
-    openRichSourceModal(hotspot);
+    openRichSourceModal(hotspot, { type: editingHomePage ? 'home-page' : 'info-hotspot' });
   });
 
   btnInsertBold.addEventListener('click', () => {
@@ -6038,12 +6177,18 @@ function renderContentBlocks() {
 
   btnOpenVisualEditor.addEventListener('click', () => {
     const isOpen = Boolean(
-      richEditorModal?.classList.contains('visible') &&
-      richEditorContext?.sceneId === scene?.id &&
-      richEditorContext?.hotspotId === hotspot.id
+      isRichEditorContextMatch(editorContext)
     );
     if (isOpen) {
-      setInfoHotspotEditMode(false);
+      if (editingHomePage) {
+        setHomePageEditMode(false);
+      } else {
+        setInfoHotspotEditMode(false);
+      }
+      return;
+    }
+    if (editingHomePage) {
+      openRichEditorModal(hotspot, { type: 'home-page' });
       return;
     }
     state.selectedHotspotId = hotspot.id;
@@ -6176,22 +6321,22 @@ function renderContentBlocks() {
   btnLayoutAddCol.addEventListener('click', () => {
     if (runVisualEditorAction(() => addRichLayoutColumn())) return;
     updateStatus('Open Visual Editor to edit layout columns.');
-    openRichEditorModal(hotspot);
+    openRichEditorModal(hotspot, { type: editingHomePage ? 'home-page' : 'info-hotspot' });
   });
   btnLayoutDelCol.addEventListener('click', () => {
     if (runVisualEditorAction(() => deleteRichLayoutColumn())) return;
     updateStatus('Open Visual Editor to edit layout columns.');
-    openRichEditorModal(hotspot);
+    openRichEditorModal(hotspot, { type: editingHomePage ? 'home-page' : 'info-hotspot' });
   });
   btnLayoutDeleteBlock.addEventListener('click', () => {
     if (runVisualEditorAction(() => clearSelectedRichLayout())) return;
     updateStatus('Open Visual Editor to delete selected columns block.');
-    openRichEditorModal(hotspot);
+    openRichEditorModal(hotspot, { type: editingHomePage ? 'home-page' : 'info-hotspot' });
   });
   btnLayoutEqual.addEventListener('click', () => {
     if (runVisualEditorAction(() => setEqualRichLayoutColumnWidths())) return;
     updateStatus('Open Visual Editor to normalize selected columns width.');
-    openRichEditorModal(hotspot);
+    openRichEditorModal(hotspot, { type: editingHomePage ? 'home-page' : 'info-hotspot' });
   });
   colsSpaceInput.addEventListener('input', () => {
     if (runVisualEditorAction(() => {
@@ -6275,7 +6420,7 @@ function renderContentBlocks() {
       updateRichImageResizeHandle();
     })) return;
     updateStatus('Open Visual Editor to resize media.');
-    openRichEditorModal(hotspot);
+    openRichEditorModal(hotspot, { type: editingHomePage ? 'home-page' : 'info-hotspot' });
   });
   btnClearFormat.addEventListener('click', () => {
     if (execVisualEditorCommand('removeFormat')) return;
@@ -7257,6 +7402,7 @@ function updateProjectName(value) {
 
 function createResetProjectPayload() {
   const now = new Date().toISOString();
+  const mainGroupId = `group-${Date.now()}`;
   const source = state.project || fallbackProject;
   return {
     project: {
@@ -7268,9 +7414,17 @@ function createResetProjectPayload() {
     settings: {
       ...(source?.settings || fallbackProject.settings || {})
     },
+    activeGroupId: mainGroupId,
+    homePage: {
+      richContentHtml: '',
+      infoFrameSize: normalizeInfoFrameSize(null),
+      infoFramePosition: normalizeInfoFramePosition(null),
+      infoFrameViewport: normalizeInfoFrameViewport(null),
+      infoFrameAnchorOffset: null
+    },
     groups: [
       {
-        id: `group-${Date.now()}`,
+        id: mainGroupId,
         name: 'Main Group',
         mainSceneId: null
       }
@@ -8967,6 +9121,8 @@ window.addEventListener('resize', () => {
   updateRichLayoutBlockResizeHandle();
   updateRichModalResizeHandle();
 });
+btnEditHomePage?.addEventListener('click', toggleHomePageEditMode);
+btnSaveHomePage?.addEventListener('click', saveHomePageState);
 btnDeleteLinksScene?.addEventListener('click', () => resolveDeleteLinksScope('scene'));
 btnDeleteLinksGroup?.addEventListener('click', () => resolveDeleteLinksScope('group'));
 btnDeleteLinksCancel?.addEventListener('click', () => resolveDeleteLinksScope(null));
@@ -9022,7 +9178,11 @@ window.addEventListener('keydown', (event) => {
     return;
   }
   if (event.key === 'Escape' && richEditorModal?.classList.contains('visible')) {
-    setInfoHotspotEditMode(false);
+    if (richEditorContext?.type === 'home-page') {
+      setHomePageEditMode(false);
+    } else {
+      setInfoHotspotEditMode(false);
+    }
     return;
   }
   if (event.key === 'Escape' && richSourceModal?.classList.contains('visible')) {

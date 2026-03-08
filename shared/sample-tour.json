@@ -12,6 +12,9 @@
     "gyroEnabled": false,
     "vrEnabled": true
   },
+  "homePage": {
+    "richContentHtml": ""
+  },
   "groups": [],
   "scenes": [],
   "assets": {

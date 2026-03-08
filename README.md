@@ -26,6 +26,7 @@ The project is operational and currently includes:
 - scene-link hotspots
 - informational hotspots with rich-content editor
 - hotspot rich content supports text, images, local/embedded video, links, and column layouts
+- optional Home Page welcome screen with rich content and `Start Tour`
 - local autosave with IndexedDB
 - project JSON export
 - static package export (ZIP or folder write)
@@ -48,8 +49,9 @@ Verified synchronization points between `editor` and `viewer`:
 - per-group floorplan nodes are exported with per-node `colorKey` (fallback: floorplan `markerColorKey`) and rendered in viewer
 - group `mainSceneId` from editor is now respected by viewer on initial load and when switching group
 - project `activeGroupId` from editor is now respected by viewer on initial load
+- project `homePage` from editor is now rendered by viewer before entering the tour
 
-Practical implication: if a tour behaves correctly in editor and you export a static package, the exported viewer now follows the same main-group/main-scene entry logic.
+Practical implication: if a tour behaves correctly in editor and you export a static package, the exported viewer follows the same main-group/main-scene entry logic and can show the configured Home Page first.
 
 ## Repository Structure
 - `editor/index.html`: editor UI
@@ -92,8 +94,9 @@ Then open:
    - `Select All` (in edit mode): bulk select all points for delete/color apply
 8. (Optional) Set the group entry scene with `Set Main Scene`.
 9. (Optional) Set the default opening group with `Set Main` in `Groups`.
-10. (Optional) Use `Reset Project` from `Project` panel to clear all scenes/tiles/hotspots/maps/assets (requires typing `reset`).
-11. Export:
+10. (Optional) Edit `Home Page` for a welcome screen shown before the tour starts.
+11. (Optional) Use `Reset Project` from `Project` panel to clear all scenes/tiles/hotspots/maps/assets (requires typing `reset`).
+12. Export:
    - `Export Project JSON` for backup/project exchange
    - `Export Static Package` for deployable output
 
@@ -105,6 +108,7 @@ Each project includes:
 - `settings`: viewer options
 - `groups`: scene grouping and per-group main scene
 - `activeGroupId`: default group opened by editor/viewer
+- `homePage`: optional welcome screen content rendered before the tour
 - `scenes`: scene metadata, initial view, hotspots, source or tile references
 - `assets`: media library
 - `minimap.floorplans`: per-group floorplan with scene nodes

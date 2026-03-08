@@ -101,6 +101,57 @@ body.vr-mode .pano-single {
 body.vr-mode .pano-vr {
   display: flex;
 }
+
+.home-page-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  pointer-events: auto;
+}
+
+.home-page-frame {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--outline);
+  border-radius: 12px;
+  background: rgba(11, 15, 20, 0.6);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+}
+
+.home-page-body {
+  flex: 1 1 auto;
+  padding: 16px;
+  overflow: auto;
+}
+
+.home-page-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 0 16px 16px;
+}
+
+.home-page-block {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+  min-width: 100%;
+  width: max-content;
+}
+
+.home-page-block p:first-child,
+.home-page-block [data-layout^="columns-"]:first-child,
+.home-page-block table:first-child {
+  margin-top: 0;
+}
+
+body.vr-mode .home-page-overlay {
+  display: none !important;
+}
+
 .placeholder {
   color: var(--muted);
 }
