@@ -632,6 +632,78 @@ textarea:disabled {
   pointer-events: none;
 }
 
+#rich-editor-modal.home-page-editor-mode {
+  background: transparent;
+  padding: 0;
+  align-items: stretch;
+  justify-content: stretch;
+  pointer-events: none;
+}
+
+#rich-editor-modal.home-page-editor-mode .modal-content-rich-editor {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  max-height: none;
+  min-width: 0;
+  min-height: 0;
+  border-radius: 0;
+  resize: none;
+  pointer-events: auto;
+}
+
+#rich-editor-modal.home-page-editor-mode .rich-editor-surface {
+  height: 100%;
+  border-radius: 0;
+  border: 0;
+  padding: 18px 22px 24px;
+}
+
+.hotspot-modal.home-page-preview-mode {
+  background: rgba(5, 7, 10, 0.88);
+  padding: 0;
+  align-items: stretch;
+  justify-content: stretch;
+  pointer-events: auto;
+}
+
+.hotspot-modal.home-page-preview-mode .modal-content-rich-preview {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  max-height: none;
+  border-radius: 0;
+}
+
+.hotspot-modal.home-page-preview-mode .preview-rich-surface {
+  height: 100%;
+  border-radius: 0;
+  border: 0;
+  padding: 18px 22px 24px;
+}
+
+.hotspot-modal.home-page-preview-mode .modal-header {
+  position: fixed;
+  top: 8px !important;
+  right: 8px;
+  left: auto;
+  z-index: 4;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  pointer-events: none;
+}
+
+.hotspot-modal.home-page-preview-mode .modal-title {
+  display: none;
+}
+
+.hotspot-modal.home-page-preview-mode #btn-close-preview {
+  pointer-events: auto;
+}
+
 .hotspot-modal.preview-modal-rich-like .modal-content-rich-preview {
   pointer-events: auto;
 }

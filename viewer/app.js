@@ -36,6 +36,7 @@ const modal = document.getElementById('hotspot-modal');
 const modalContent = modal?.querySelector('.modal-content');
 const modalTitle = document.getElementById('modal-title');
 const modalBody = document.getElementById('modal-body');
+const btnHomeToggle = document.getElementById('btn-home-toggle');
 const btnGyro = document.getElementById('btn-gyro');
 const btnReset = document.getElementById('btn-reset-orientation');
 const btnVr = document.getElementById('btn-vr');
@@ -76,7 +77,7 @@ const MAX_INFO_FRAME_HEIGHT = 1800;
 const DEFAULT_INFO_FRAME_VIEWPORT_WIDTH = 1366;
 const DEFAULT_INFO_FRAME_VIEWPORT_HEIGHT = 768;
 const DEFAULT_INFO_BG_COLOR_KEY = 'black';
-const DEFAULT_INFO_BG_TRANSPARENCY = 60;
+const DEFAULT_INFO_BG_TRANSPARENCY = 0;
 
 function normalizeTextAlign(value) {
   const candidate = String(value || 'left').trim().toLowerCase();
@@ -758,6 +759,13 @@ function hasHomePageContent(project = projectData) {
   return Boolean(String(homePage.richContentHtml || '').trim());
 }
 
+function updateHomePageToggleButton(project = projectData) {
+  if (!btnHomeToggle) return;
+  const hasContent = hasHomePageContent(project);
+  btnHomeToggle.disabled = !hasContent;
+  btnHomeToggle.textContent = homePageVisible ? 'Close Home' : 'Open Home';
+}
+
 function closeHomePageOverlay() {
   homePageVisible = false;
   if (!homePageOverlay || !homePageBody || !homePageFrame) return;
@@ -769,26 +777,17 @@ function closeHomePageOverlay() {
   homePageFrame.style.removeProperty('left');
   homePageFrame.style.removeProperty('top');
   homePageFrame.style.removeProperty('background-color');
+  updateHomePageToggleButton(projectData);
 }
 
 function applyHomePageFrame(project = projectData) {
   const homePage = getProjectHomePage(project);
   if (!homePage || !homePageFrame || !homePageOverlay) return;
   const overlayRect = homePageOverlay.getBoundingClientRect();
-  const maxWidth = Math.max(MIN_INFO_FRAME_WIDTH, Math.floor(overlayRect.width - 16));
-  const maxHeight = Math.max(MIN_INFO_FRAME_HEIGHT, Math.floor(overlayRect.height - 16));
-  const frame = normalizeInfoFrameSize(homePage.infoFrameSize);
-  const width = Math.min(frame.width, maxWidth);
-  const height = Math.min(frame.height, maxHeight);
-  const framePosition = getScaledInfoFramePositionForViewport(homePage, overlayRect.width, overlayRect.height);
-  const maxLeft = Math.max(8, overlayRect.width - width - 8);
-  const maxTop = Math.max(8, overlayRect.height - height - 8);
-  const left = Math.round(Math.min(maxLeft, Math.max(8, framePosition.left)));
-  const top = Math.round(Math.min(maxTop, Math.max(8, framePosition.top)));
-  homePageFrame.style.width = `${width}px`;
-  homePageFrame.style.height = `${height}px`;
-  homePageFrame.style.left = `${left}px`;
-  homePageFrame.style.top = `${top}px`;
+  homePageFrame.style.width = `${Math.max(1, Math.round(overlayRect.width))}px`;
+  homePageFrame.style.height = `${Math.max(1, Math.round(overlayRect.height))}px`;
+  homePageFrame.style.left = '0px';
+  homePageFrame.style.top = '0px';
   const visualStyle = getFrameVisualStyle(homePage);
   const hex = FLOORPLAN_COLOR_MAP[visualStyle.backgroundColorKey] || FLOORPLAN_COLOR_MAP[DEFAULT_INFO_BG_COLOR_KEY];
   const alpha = (100 - visualStyle.backgroundTransparency) / 100;
@@ -799,6 +798,7 @@ function renderHomePage(project = projectData) {
   if (!homePageOverlay || !homePageBody || !homePageFrame) return;
   if (!hasHomePageContent(project)) {
     closeHomePageOverlay();
+    updateHomePageToggleButton(project);
     return;
   }
   const homePage = getProjectHomePage(project);
@@ -816,6 +816,16 @@ function renderHomePage(project = projectData) {
     btnHomePageStart.disabled = !scenes.length;
   }
   applyHomePageFrame(project);
+  updateHomePageToggleButton(project);
+}
+
+function toggleHomePageOverlay() {
+  if (!hasHomePageContent(projectData)) return;
+  if (homePageVisible) {
+    closeHomePageOverlay();
+    return;
+  }
+  renderHomePage(projectData);
 }
 
 function openModal(hotspot) {
@@ -1694,6 +1704,7 @@ groupSelect?.addEventListener('change', () => {
 
 document.getElementById('btn-close-modal').addEventListener('click', closeModal);
 btnHomePageStart?.addEventListener('click', closeHomePageOverlay);
+btnHomeToggle?.addEventListener('click', toggleHomePageOverlay);
 window.addEventListener('resize', () => {
   if (homePageVisible) {
     applyHomePageFrame(projectData);

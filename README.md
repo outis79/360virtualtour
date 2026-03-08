@@ -27,6 +27,7 @@ The project is operational and currently includes:
 - informational hotspots with rich-content editor
 - hotspot rich content supports text, images, local/embedded video, links, and column layouts
 - optional Home Page welcome screen with rich content and `Start Tour`
+- Home Page uses fullscreen viewer overlay and a dedicated editor mode (editor keeps right tools panel accessible)
 - local autosave with IndexedDB
 - project JSON export
 - static package export (ZIP or folder write)
@@ -50,6 +51,7 @@ Verified synchronization points between `editor` and `viewer`:
 - group `mainSceneId` from editor is now respected by viewer on initial load and when switching group
 - project `activeGroupId` from editor is now respected by viewer on initial load
 - project `homePage` from editor is now rendered by viewer before entering the tour
+- viewer header includes a `Home` toggle to reopen/close the Home Page after the tour has started
 
 Practical implication: if a tour behaves correctly in editor and you export a static package, the exported viewer follows the same main-group/main-scene entry logic and can show the configured Home Page first.
 
@@ -95,6 +97,9 @@ Then open:
 8. (Optional) Set the group entry scene with `Set Main Scene`.
 9. (Optional) Set the default opening group with `Set Main` in `Groups`.
 10. (Optional) Edit `Home Page` for a welcome screen shown before the tour starts.
+    - editor mode uses the same rich-content tools as `Info Content`
+    - Home Page editor fills the browser area except the right tools panel
+    - viewer renders Home Page fullscreen with integrated `Start Tour`
 11. (Optional) Use `Reset Project` from `Project` panel to clear all scenes/tiles/hotspots/maps/assets (requires typing `reset`).
 12. Export:
    - `Export Project JSON` for backup/project exchange

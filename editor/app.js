@@ -67,12 +67,14 @@ const sceneTitle = document.getElementById('scene-title');
 const projectNameInput = document.getElementById('project-name');
 const projectFovInput = null;
 const statusLeft = document.getElementById('status-left');
+const rightPanel = document.querySelector('.panel.right');
 const btnAddGroup = document.getElementById('btn-add-group');
 const btnRenameGroup = document.getElementById('btn-rename-group');
 const btnSetMainGroup = document.getElementById('btn-set-main-group');
 const btnDeleteGroup = document.getElementById('btn-delete-group');
 const btnEditHomePage = document.getElementById('btn-edit-home-page');
 const btnSaveHomePage = document.getElementById('btn-save-home-page');
+const btnViewHomePage = document.getElementById('btn-view-home-page');
 const btnImport = document.getElementById('btn-import');
 const btnSave = document.getElementById('btn-save');
 const btnExport = document.getElementById('btn-export');
@@ -233,7 +235,7 @@ const DEFAULT_INFO_FRAME_HOTSPOT_OFFSET_X = 0;
 const DEFAULT_INFO_FRAME_HOTSPOT_OFFSET_Y = 10;
 const DEFAULT_INFO_HOTSPOT_COLOR_KEY = 'yellow';
 const DEFAULT_INFO_BG_COLOR_KEY = 'black';
-const DEFAULT_INFO_BG_TRANSPARENCY = 60;
+const DEFAULT_INFO_BG_TRANSPARENCY = 0;
 const MIN_INFO_FRAME_WIDTH = 44;
 const MAX_INFO_FRAME_WIDTH = 2400;
 const MIN_INFO_FRAME_HEIGHT = 30;
@@ -393,6 +395,17 @@ function getViewportClampedInfoFrameSize(size) {
 
 function applyRichEditorModalFrameSize(hotspot) {
   if (!richEditorModalContent || !richEditorSurface) return;
+  if (isHomePageRichEditorMode()) {
+    const bounds = getHomePageEditorViewportBounds();
+    richEditorModal.classList.add('home-page-editor-mode');
+    richEditorModalContent.style.width = `${bounds.width}px`;
+    richEditorModalContent.style.height = `${bounds.height}px`;
+    richEditorModalContent.style.left = `${bounds.left}px`;
+    richEditorModalContent.style.top = `${bounds.top}px`;
+    hideRichModalResizeHandle();
+    return;
+  }
+  richEditorModal.classList.remove('home-page-editor-mode');
   applyRichEditorModalResizeConstraints();
   const desired = getViewportClampedInfoFrameSize(getInfoHotspotFrameSize(hotspot));
   const desiredPos = getAnchoredInfoFramePosition(hotspot);
@@ -441,6 +454,11 @@ function getRichEditorContentMinSize() {
 
 function applyRichEditorModalResizeConstraints() {
   if (!richEditorModalContent || !richEditorSurface) return;
+  if (isHomePageRichEditorMode()) {
+    richEditorModalContent.style.minWidth = '0px';
+    richEditorModalContent.style.minHeight = '0px';
+    return;
+  }
   const contentMin = getRichEditorContentMinSize();
   const chromeWidth = Math.max(0, richEditorModalContent.offsetWidth - richEditorSurface.clientWidth);
   const chromeHeight = Math.max(0, richEditorModalContent.offsetHeight - richEditorSurface.clientHeight);
@@ -467,6 +485,12 @@ function parsePixelStyleValue(value, fallback) {
 
 function clampRichEditorModalPosition() {
   if (!richEditorModalContent) return;
+  if (isHomePageRichEditorMode()) {
+    richEditorModalContent.style.left = '0px';
+    richEditorModalContent.style.top = '0px';
+    hideRichModalResizeHandle();
+    return;
+  }
   const rect = richEditorModalContent.getBoundingClientRect();
   const maxLeft = Math.max(0, window.innerWidth - rect.width - 8);
   const maxTop = Math.max(0, window.innerHeight - rect.height - 8);
@@ -497,6 +521,10 @@ function hideRichModalResizeHandle() {
 
 function updateRichModalResizeHandle() {
   if (!richEditorModal?.classList.contains('visible') || !richEditorModalContent) {
+    hideRichModalResizeHandle();
+    return;
+  }
+  if (isHomePageRichEditorMode()) {
     hideRichModalResizeHandle();
     return;
   }
@@ -540,6 +568,7 @@ function handleRichModalResizeMove(event) {
 
 function startRichModalResize(event) {
   if (!richEditorModalContent || !richEditorModal?.classList.contains('visible')) return;
+  if (isHomePageRichEditorMode()) return;
   event.preventDefault();
   event.stopPropagation();
   applyRichEditorModalResizeConstraints();
@@ -584,6 +613,7 @@ function handleRichEditorDragMove(event) {
 
 function maybeStartRichEditorDrag(event) {
   if (!richEditorModalContent || !richEditorSurface || event.button !== 0) return false;
+  if (isHomePageRichEditorMode()) return false;
   if (!(event.target instanceof Element) || event.target !== richEditorSurface) return false;
   const rect = richEditorSurface.getBoundingClientRect();
   const withinHandleZone = (event.clientY - rect.top) <= 18;
@@ -1476,6 +1506,25 @@ function getProjectHomePage() {
   homePage.infoFrameViewport = normalizeInfoFrameViewport(homePage.infoFrameViewport);
   homePage.infoFrameAnchorOffset = normalizeInfoFrameAnchorOffset(homePage.infoFrameAnchorOffset);
   return homePage;
+}
+
+function isHomePageRichEditorMode() {
+  return richEditorContext?.type === 'home-page';
+}
+
+function isHomePagePreviewMode() {
+  return previewHotspotContext?.type === 'home-page';
+}
+
+function getHomePageEditorViewportBounds() {
+  const rightRect = rightPanel?.getBoundingClientRect?.() || null;
+  const rightEdge = rightRect && Number.isFinite(rightRect.left) ? Math.max(0, Math.round(rightRect.left)) : Math.round(window.innerWidth);
+  return {
+    left: 0,
+    top: 0,
+    width: Math.max(1, rightEdge),
+    height: Math.max(1, Math.round(window.innerHeight))
+  };
 }
 
 function getRichContentTargetByContext(context) {
@@ -2643,6 +2692,7 @@ function openRichEditorModal(hotspot = getSelectedInfoHotspot(), options = {}) {
   richEditorSavedRange = null;
   richEditorModal.classList.add('visible');
   richEditorModal.setAttribute('aria-hidden', 'false');
+  richEditorModal.classList.toggle('home-page-editor-mode', contextType === 'home-page');
   setTimeout(() => {
     applyRichEditorModalFrameSize(hotspot);
     updateRichModalResizeHandle();
@@ -2665,6 +2715,7 @@ function closeRichEditorModal() {
   richEditorSurface.classList.remove('drag-zone');
   richEditorSurface.style.removeProperty('background-color');
   richEditorModal.classList.remove('visible');
+  richEditorModal.classList.remove('home-page-editor-mode');
   richEditorModal.setAttribute('aria-hidden', 'true');
   if (richEditorModalContent) {
     richEditorModalContent.style.removeProperty('width');
@@ -3360,6 +3411,17 @@ function applyRichEditorSurfaceVisualStyle(hotspot) {
 
 function applyPreviewModalFrameSize(hotspot) {
   if (!previewModalContent || !previewModalBody) return;
+  if (isHomePagePreviewMode()) {
+    previewModal.classList.add('home-page-preview-mode');
+    previewModalContent.style.width = `${window.innerWidth}px`;
+    previewModalContent.style.height = `${window.innerHeight}px`;
+    previewModalContent.style.left = '0px';
+    previewModalContent.style.top = '0px';
+    previewModalBody.style.height = `${window.innerHeight}px`;
+    previewModalBody.style.maxHeight = `${window.innerHeight}px`;
+    return;
+  }
+  previewModal.classList.remove('home-page-preview-mode');
   const frame = getViewportClampedInfoFrameSize(getInfoHotspotFrameSize(hotspot));
   const isRichLike = previewModal?.classList.contains('preview-modal-rich-like');
   if (isRichLike) {
@@ -4853,6 +4915,7 @@ function openHotspotPreview(hotspotId) {
   previewModalTitle.textContent = hotspot.title || 'Hotspot';
   previewModalBody.innerHTML = '';
   previewModal.classList.remove('preview-modal-rich-like');
+  previewModal.classList.remove('home-page-preview-mode');
   previewModalContent?.classList.remove('modal-content-rich-preview');
   previewModalBody.classList.remove('preview-rich-surface');
   previewModalBody.removeAttribute('contenteditable');
@@ -5077,6 +5140,11 @@ function updateHomePageButtons() {
   if (btnSaveHomePage) {
     btnSaveHomePage.disabled = !homePageEditMode;
   }
+  if (btnViewHomePage) {
+    const homePage = getProjectHomePage();
+    const hasContent = Boolean(String(homePage?.richContentHtml || '').trim());
+    btnViewHomePage.disabled = !hasContent;
+  }
 }
 
 function updateInfoHotspotModeButtons() {
@@ -5230,6 +5298,34 @@ function saveHomePageState() {
   }
   autosave();
   updateStatus('Home Page saved.');
+}
+
+function openHomePagePreview() {
+  const homePage = getProjectHomePage();
+  if (!homePage || !previewModal || !previewModalBody) return;
+  const richHtml = sanitizeRichHtml(getInfoHotspotRichContent(homePage));
+  if (!String(richHtml || '').trim()) {
+    updateStatus('Home Page is empty.');
+    return;
+  }
+  previewHotspotContext = {
+    type: 'home-page',
+    anchorOffset: null
+  };
+  previewModalTitle.textContent = 'Home Page';
+  previewModalBody.innerHTML = '';
+  previewModal.classList.add('preview-modal-rich-like');
+  previewModalContent?.classList.add('modal-content-rich-preview');
+  previewModalBody.classList.add('preview-rich-surface');
+  previewModalBody.setAttribute('contenteditable', 'false');
+  applyPreviewModalFrameSize(homePage);
+  applyPreviewModalVisualStyle(homePage);
+  previewModalBody.innerHTML = richHtml;
+  trimTrailingEmptyParagraphs(previewModalBody);
+  resolveRichMediaReferencesInContainer(previewModalBody, state.project, { preferDataUrl: true });
+  previewModal.classList.add('visible');
+  previewModal.setAttribute('aria-hidden', 'false');
+  scheduleMarkerRender();
 }
 
 function clearPendingSceneLinkDraft(shouldRender = true) {
@@ -9123,6 +9219,7 @@ window.addEventListener('resize', () => {
 });
 btnEditHomePage?.addEventListener('click', toggleHomePageEditMode);
 btnSaveHomePage?.addEventListener('click', saveHomePageState);
+btnViewHomePage?.addEventListener('click', openHomePagePreview);
 btnDeleteLinksScene?.addEventListener('click', () => resolveDeleteLinksScope('scene'));
 btnDeleteLinksGroup?.addEventListener('click', () => resolveDeleteLinksScope('group'));
 btnDeleteLinksCancel?.addEventListener('click', () => resolveDeleteLinksScope(null));
