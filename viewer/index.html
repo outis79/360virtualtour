@@ -11,6 +11,8 @@
   <header class="viewer-header">
     <div class="title">Iterpano Viewer</div>
     <div class="actions">
+      <button class="btn ghost mobile-only" id="btn-mobile-scenes">Scenes</button>
+      <button class="btn ghost mobile-only" id="btn-mobile-map">Map</button>
       <button class="btn ghost" id="btn-home-toggle">Home</button>
       <button class="btn ghost" id="btn-gyro">Enable Gyro</button>
       <button class="btn ghost" id="btn-reset-orientation">Reset Orientation</button>
@@ -38,6 +40,10 @@
     </div>
 
     <aside class="side-panel">
+      <div class="mobile-panel-head">
+        <div class="mobile-panel-title" id="mobile-panel-title">Scenes</div>
+        <button class="btn ghost mobile-panel-close" id="btn-mobile-panel-close" aria-label="Close panel">Close</button>
+      </div>
       <div class="panel-section">
         <div class="section-title">Groups</div>
         <select id="group-select" class="field-select" aria-label="Scene groups"></select>
@@ -67,6 +73,8 @@
       </div>
     </aside>
   </main>
+
+  <div class="mobile-panel-backdrop hidden" id="mobile-panel-backdrop" aria-hidden="true"></div>
 
   <footer class="license-footer">
     Powered by Marzipano (Apache-2.0), JSZip (MIT), Bowser (MIT), Screenfull (MIT), Reset CSS (Public Domain).

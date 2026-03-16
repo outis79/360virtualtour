@@ -45,6 +45,7 @@ The project is operational and currently includes:
 - cross-group duplicate upload modal (`Proceed`, `Accept All`, `Skip`, `Skip All`, `List`, `Cancel`)
 - viewer with groups, floorplan, hotspot modal, gyro toggle, and basic VR/Cardboard mode
 - exported viewer opens without static placeholder text inside the panorama area
+- exported viewer includes a mobile-first layout: panorama prioritized, `Scenes` and `Map` as bottom sheets
 
 ## Editor/Viewer Synchronization
 Verified synchronization points between `editor` and `viewer`:
@@ -62,6 +63,11 @@ Verified synchronization points between `editor` and `viewer`:
 - exported viewer info hotspots preserve editor marker colors
 - exported viewer closes open info modals automatically when scene changes
 - exported viewer quick info hotspots use hover on desktop and tap fallback on touch devices
+- exported viewer uses a dedicated mobile layout below `900px`
+  - panorama prioritized
+  - `Scenes` and `Map` opened from topbar buttons
+  - side panel converted into bottom sheet
+  - info hotspots clamped to mobile viewport size
 
 Practical implication: if a tour behaves correctly in editor and you export a static package, the exported viewer follows the same main-group/main-scene entry logic and can show the configured Home Page first.
 
@@ -169,6 +175,7 @@ Operational notes:
 - Group-level image actions are in the left `Groups` panel (`Upload Img`, `Delete All Img`).
 - Map maximize is constrained to a floating area over the panorama (full height, about 1/3 width).
 - In the exported viewer, maximized map panel uses the viewer dark theme with 60% transparency for control readability.
+- On mobile, the exported viewer hides `Scenes` and `Map` by default and exposes them through topbar toggles.
 
 ## Project Package ZIP
 `Export Project Package ZIP` creates a reimportable editor package intended for backup/restore of authoring work.

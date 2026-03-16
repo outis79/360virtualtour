@@ -30,6 +30,11 @@ const btnFloorplanZoomIn = document.getElementById('btn-floorplan-zoom-in');
 const btnFloorplanZoomReset = document.getElementById('btn-floorplan-zoom-reset');
 const btnFloorplanExpand = document.getElementById('btn-floorplan-expand');
 const floorplanZoomValue = document.getElementById('floorplan-zoom-value');
+const btnMobileScenes = document.getElementById('btn-mobile-scenes');
+const btnMobileMap = document.getElementById('btn-mobile-map');
+const btnMobilePanelClose = document.getElementById('btn-mobile-panel-close');
+const mobilePanelTitle = document.getElementById('mobile-panel-title');
+const mobilePanelBackdrop = document.getElementById('mobile-panel-backdrop');
 const homePageOverlay = document.getElementById('home-page-overlay');
 const homePageFrame = document.getElementById('home-page-frame');
 const homePageBody = document.getElementById('home-page-body');
@@ -69,6 +74,7 @@ let quickInfoHoverElement = null;
 let quickInfoHoverTimer = null;
 let quickInfoCloseTimer = null;
 let quickInfoModalHover = false;
+let mobilePanelMode = null;
 
 const FLOORPLAN_COLOR_MAP = {
   yellow: '#f0c84b',
@@ -103,6 +109,18 @@ function normalizeTextAlign(value) {
 
 function normalizeInfoHotspotDisplayMode(value) {
   return String(value || '').trim().toLowerCase() === 'quick' ? 'quick' : 'click';
+}
+
+function isMobileViewerLayout() {
+  return typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 900px)').matches;
+}
+
+function getMobileInfoFrameClamp() {
+  if (!isMobileViewerLayout()) return null;
+  return {
+    maxWidth: Math.max(220, Math.round(window.innerWidth * 0.92)),
+    maxHeight: Math.max(160, Math.round(window.innerHeight * 0.72))
+  };
 }
 
 function isZeroCssValue(value) {
@@ -295,13 +313,16 @@ function maybeStartInfoModalDrag(event) {
 function applyInfoModalFrameSize(hotspot) {
   if (!modalContent || !modalBody) return;
   const frame = getViewportClampedInfoFrameSize(hotspot?.infoFrameSize);
+  const mobileClamp = getMobileInfoFrameClamp();
+  const width = mobileClamp ? Math.min(frame.width, mobileClamp.maxWidth) : frame.width;
+  const height = mobileClamp ? Math.min(frame.height, mobileClamp.maxHeight) : frame.height;
   modal.classList.add('preview-modal-rich-like');
   modalContent.classList.add('modal-content-rich-preview');
   modalBody.classList.add('preview-rich-surface');
-  modalContent.style.width = `${frame.width}px`;
-  modalContent.style.height = `${frame.height}px`;
-  modalBody.style.height = `${frame.height}px`;
-  modalBody.style.maxHeight = `${frame.height}px`;
+  modalContent.style.width = `${width}px`;
+  modalContent.style.height = `${height}px`;
+  modalBody.style.height = `${height}px`;
+  modalBody.style.maxHeight = `${height}px`;
   const hotspotPoint = getHotspotViewportPoint(activeInfoHotspotElement);
   const anchorOffset = hotspotPoint ? getInfoModalAnchorOffset(hotspot) : null;
   const framePosition = hotspotPoint && anchorOffset
@@ -310,8 +331,8 @@ function applyInfoModalFrameSize(hotspot) {
         top: Math.round(hotspotPoint.y + anchorOffset.offsetY)
       }
     : getScaledInfoFramePositionForViewport(hotspot);
-  const maxLeft = Math.max(8, window.innerWidth - frame.width - 8);
-  const maxTop = Math.max(8, window.innerHeight - frame.height - 8);
+  const maxLeft = Math.max(8, window.innerWidth - width - 8);
+  const maxTop = Math.max(8, window.innerHeight - height - 8);
   const left = Number.isFinite(framePosition.left) ? framePosition.left : DEFAULT_INFO_FRAME_LEFT;
   const top = Number.isFinite(framePosition.top) ? framePosition.top : DEFAULT_INFO_FRAME_TOP;
   modalContent.style.left = `${Math.round(Math.min(maxLeft, Math.max(8, left)))}px`;
@@ -1781,6 +1802,43 @@ function updateFloorplanExpandButton() {
   btnFloorplanExpand.setAttribute('aria-pressed', floorplanExpanded ? 'true' : 'false');
 }
 
+function updateMobilePanelUi() {
+  const isOpen = Boolean(mobilePanelMode);
+  document.body.classList.toggle('mobile-panel-open', isOpen);
+  document.body.classList.toggle('mobile-panel-scenes', mobilePanelMode === 'scenes');
+  document.body.classList.toggle('mobile-panel-map', mobilePanelMode === 'map');
+  mobilePanelBackdrop?.classList.toggle('hidden', !isOpen);
+  mobilePanelBackdrop?.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
+  if (mobilePanelTitle) {
+    mobilePanelTitle.textContent = mobilePanelMode === 'map' ? 'Map' : 'Scenes';
+  }
+  if (btnMobileScenes) {
+    btnMobileScenes.classList.toggle('active', mobilePanelMode === 'scenes');
+    btnMobileScenes.setAttribute('aria-pressed', mobilePanelMode === 'scenes' ? 'true' : 'false');
+  }
+  if (btnMobileMap) {
+    btnMobileMap.classList.toggle('active', mobilePanelMode === 'map');
+    btnMobileMap.setAttribute('aria-pressed', mobilePanelMode === 'map' ? 'true' : 'false');
+  }
+}
+
+function closeMobilePanel() {
+  mobilePanelMode = null;
+  updateMobilePanelUi();
+}
+
+function openMobilePanel(mode) {
+  if (!isMobileViewerLayout()) return;
+  mobilePanelMode = mode === 'map' ? 'map' : 'scenes';
+  updateMobilePanelUi();
+}
+
+function toggleMobilePanel(mode) {
+  if (!isMobileViewerLayout()) return;
+  mobilePanelMode = mobilePanelMode === mode ? null : mode;
+  updateMobilePanelUi();
+}
+
 function setFloorplanExpanded(next) {
   floorplanExpanded = Boolean(next);
   floorplanPanel?.classList.toggle('maximized', floorplanExpanded);
@@ -1914,6 +1972,9 @@ function switchScene(scene, options = {}) {
   hideSceneLinkTooltip();
   if (modal?.classList.contains('visible')) {
     closeModal();
+  }
+  if (isMobileViewerLayout()) {
+    closeMobilePanel();
   }
   const syncGroup = options.syncGroup !== false;
   currentScene = scene;
@@ -2127,6 +2188,10 @@ btnFloorplanZoomReset?.addEventListener('click', () => {
   setActiveFloorplanZoom(1);
 });
 btnFloorplanExpand?.addEventListener('click', toggleFloorplanExpanded);
+btnMobileScenes?.addEventListener('click', () => toggleMobilePanel('scenes'));
+btnMobileMap?.addEventListener('click', () => toggleMobilePanel('map'));
+btnMobilePanelClose?.addEventListener('click', closeMobilePanel);
+mobilePanelBackdrop?.addEventListener('click', closeMobilePanel);
 groupSelect?.addEventListener('change', () => {
   activeGroupId = groupSelect.value;
   renderFloorplan();
@@ -2158,7 +2223,13 @@ modalContent?.addEventListener('mouseleave', () => {
 btnHomePageStart?.addEventListener('click', startTourFromHomePage);
 btnHomeToggle?.addEventListener('click', toggleHomePageOverlay);
 updateFloorplanExpandButton();
+updateMobilePanelUi();
 window.addEventListener('resize', () => {
+  if (!isMobileViewerLayout()) {
+    closeMobilePanel();
+  } else {
+    updateMobilePanelUi();
+  }
   if (activeSceneLinkTooltipElement) {
     positionSceneLinkTooltip(activeSceneLinkTooltipElement);
   }
