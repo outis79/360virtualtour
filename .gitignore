@@ -3,6 +3,7 @@ viewer/tiles/
 viewer/media/
 viewer/floorplans/
 viewer/icons/
+sampletour/
 
 # Optional export artifacts
 *-static.json

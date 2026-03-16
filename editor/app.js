@@ -85,6 +85,7 @@ const btnUploadFloorplan = document.getElementById('btn-upload-minimap');
 const btnDeleteFloorplan = document.getElementById('btn-delete-floorplan');
 const btnUploadPanorama = document.getElementById('btn-upload-panorama');
 const btnGenerateTiles = document.getElementById('btn-generate-tiles');
+const btnGenerateAllTiles = document.getElementById('btn-generate-all-tiles');
 const btnTilesInfo = document.getElementById('btn-tiles-info');
 const btnDeleteSelectedScenes = document.getElementById('btn-delete-selected-scenes');
 const btnCancelTiles = document.getElementById('btn-cancel-tiles');
@@ -164,6 +165,11 @@ const btnDuplicatePanoramaCancel = document.getElementById('btn-duplicate-panora
 const duplicatePanoramaListModal = document.getElementById('duplicate-panorama-list-modal');
 const duplicatePanoramaListBody = document.getElementById('duplicate-panorama-list-body');
 const btnCloseDuplicatePanoramaList = document.getElementById('btn-close-duplicate-panorama-list');
+const generateAllTilesModal = document.getElementById('generate-all-tiles-modal');
+const generateAllTilesMessage = document.getElementById('generate-all-tiles-message');
+const btnGenerateAllTilesSkip = document.getElementById('btn-generate-all-tiles-skip');
+const btnGenerateAllTilesOverwrite = document.getElementById('btn-generate-all-tiles-overwrite');
+const btnGenerateAllTilesCancel = document.getElementById('btn-generate-all-tiles-cancel');
 const sceneCommentInput = document.getElementById('scene-comment');
 
 let dragState = null;
@@ -201,6 +207,7 @@ let floorplanResizeObserver = null;
 let deleteLinksScopeResolver = null;
 let duplicatePanoramaResolver = null;
 let duplicatePanoramaListEntries = [];
+let generateAllTilesResolver = null;
 let richEditorContext = null;
 let richSourceContext = null;
 let selectedRichImageElement = null;
@@ -221,6 +228,7 @@ let previewModalDragState = null;
 let infoHotspotCreateMode = false;
 let infoHotspotEditMode = false;
 let homePageEditMode = false;
+const SCENE_ITEM_SINGLE_CLICK_DELAY_MS = 320;
 
 const FLOORPLAN_COLOR_MAP = {
   yellow: '#f0c84b',
@@ -1107,7 +1115,9 @@ function isSafeRichUrl(value, { allowDataImage = false } = {}) {
   if (allowDataImage && url.startsWith('data:image/')) return true;
   if (url.startsWith('http://') || url.startsWith('https://')) return true;
   if (url.startsWith('./') || url.startsWith('../') || url.startsWith('/')) return true;
-  return false;
+  if (/^[a-z][a-z0-9+.-]*:/i.test(url)) return false;
+  if (url.startsWith('//')) return false;
+  return true;
 }
 
 function parseYouTubeTimeToSeconds(value) {
@@ -4453,6 +4463,11 @@ function renderSceneList() {
     main.dataset.sceneId = scene.id;
     let clickTimer = null;
     main.addEventListener('click', (event) => {
+      if (renamingSceneId === scene.id) {
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
       if (event.ctrlKey || event.metaKey || event.shiftKey) {
         event.preventDefault();
         event.stopPropagation();
@@ -4466,9 +4481,13 @@ function renderSceneList() {
       // Normal click exits multi-select and keeps only the clicked scene.
       state.multiSelectedSceneIds = [scene.id];
       state.sceneSelectionAnchorId = scene.id;
+      if (clickTimer) {
+        clearTimeout(clickTimer);
+      }
       clickTimer = setTimeout(() => {
+        clickTimer = null;
         selectScene(scene.id);
-      }, 220);
+      }, SCENE_ITEM_SINGLE_CLICK_DELAY_MS);
     });
     main.addEventListener('dblclick', (event) => {
       event.preventDefault();
@@ -4476,6 +4495,11 @@ function renderSceneList() {
       if (clickTimer) {
         clearTimeout(clickTimer);
         clickTimer = null;
+      }
+      state.multiSelectedSceneIds = [scene.id];
+      state.sceneSelectionAnchorId = scene.id;
+      if (state.selectedSceneId !== scene.id) {
+        selectScene(scene.id);
       }
       startInlineSceneRename(scene, main);
     });
@@ -5480,6 +5504,61 @@ function askDeleteLinksScope() {
   return new Promise((resolve) => {
     deleteLinksScopeResolver = resolve;
     openDeleteLinksScopeModal();
+  });
+}
+
+function openGenerateAllTilesModal(message) {
+  if (!generateAllTilesModal) return;
+  if (generateAllTilesMessage) {
+    generateAllTilesMessage.textContent = message || '';
+  }
+  generateAllTilesModal.classList.add('visible');
+  generateAllTilesModal.setAttribute('aria-hidden', 'false');
+}
+
+function closeGenerateAllTilesModal() {
+  if (!generateAllTilesModal) return;
+  generateAllTilesModal.classList.remove('visible');
+  generateAllTilesModal.setAttribute('aria-hidden', 'true');
+}
+
+function resolveGenerateAllTilesChoice(value) {
+  if (!generateAllTilesResolver) return;
+  const resolver = generateAllTilesResolver;
+  generateAllTilesResolver = null;
+  closeGenerateAllTilesModal();
+  resolver(value);
+}
+
+function askGenerateAllTilesExistingPolicy(alreadyTiledScenes) {
+  if (!alreadyTiledScenes?.length) return Promise.resolve('skip');
+  const names = alreadyTiledScenes
+    .slice(0, 8)
+    .map((scene) => `- ${scene.name || scene.id}`);
+  if (alreadyTiledScenes.length > 8) {
+    names.push(`- ...and ${alreadyTiledScenes.length - 8} more`);
+  }
+  const message = [
+    `${alreadyTiledScenes.length} scene(s) already have tiles.`,
+    '',
+    ...names,
+    '',
+    'Choose an action:',
+    '- Skip Existing: keep existing tiles and generate only missing ones',
+    '- Overwrite: regenerate tiles for all scenes',
+    '- Cancel: stop the process'
+  ].join('\n');
+  if (!generateAllTilesModal || !btnGenerateAllTilesSkip || !btnGenerateAllTilesOverwrite || !btnGenerateAllTilesCancel) {
+    const input = window.prompt(message, 'skip');
+    if (input === null) return Promise.resolve('cancel');
+    const normalized = String(input || '').trim().toLowerCase();
+    if (normalized === 'overwrite') return Promise.resolve('overwrite');
+    if (normalized === 'skip') return Promise.resolve('skip');
+    return Promise.resolve('cancel');
+  }
+  return new Promise((resolve) => {
+    generateAllTilesResolver = resolve;
+    openGenerateAllTilesModal(message);
   });
 }
 
@@ -8237,6 +8316,7 @@ function downloadBlob(blob, filename) {
 
 async function exportZipPackage(project, jsonBlob, assets, tiles, runtimeFiles) {
   const zip = new JSZip();
+  zip.file('index.html', buildStaticPackageRootIndexHtml());
   zip.file(`${project.project.name || 'tour-project'}-static.json`, await blobToString(jsonBlob));
   zip.file('shared/sample-tour.json', await blobToString(jsonBlob));
 
@@ -8283,6 +8363,7 @@ async function exportWithFileSystemAccess(project, jsonBlob, assets, tiles, runt
   try {
     const root = await window.showDirectoryPicker();
 
+    await writeFile(root, 'index.html', new Blob([buildStaticPackageRootIndexHtml()], { type: 'text/html' }));
     await writeFile(root, `${project.project.name || 'tour-project'}-static.json`, jsonBlob);
     const sharedDir = await root.getDirectoryHandle('shared', { create: true });
     await writeFile(sharedDir, 'sample-tour.json', jsonBlob);
@@ -8304,6 +8385,22 @@ async function exportWithFileSystemAccess(project, jsonBlob, assets, tiles, runt
     console.error(error);
     updateStatus('Static export failed.');
   }
+}
+
+function buildStaticPackageRootIndexHtml() {
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="refresh" content="0; url=./viewer/index.html">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Open Tour</title>
+</head>
+<body>
+  <p>Redirecting to <a href="./viewer/index.html">viewer/index.html</a>...</p>
+</body>
+</html>
+`;
 }
 
 async function writeFile(directoryHandle, filename, blob) {
@@ -9138,6 +9235,84 @@ async function generateTilesForSelectedScenes() {
   }
 }
 
+async function generateAllTiles() {
+  if (!state.project?.scenes?.length) {
+    updateStatus('No scenes available.');
+    return;
+  }
+
+  const allScenes = [...(state.project.scenes || [])];
+  const alreadyTiled = allScenes.filter((scene) => sceneHasGeneratedTiles(scene));
+  const tilePolicy = await askGenerateAllTilesExistingPolicy(alreadyTiled);
+  if (tilePolicy === 'cancel') {
+    updateStatus('Generate all tiles cancelled.');
+    return;
+  }
+
+  const candidateScenes = tilePolicy === 'overwrite'
+    ? allScenes
+    : allScenes.filter((scene) => !sceneHasGeneratedTiles(scene));
+  const scenesWithPanorama = candidateScenes.filter((scene) => scene.sourceImage?.dataUrl);
+  const skippedAlreadyTiled = tilePolicy === 'skip' ? alreadyTiled.length : 0;
+  const skippedNoPanorama = candidateScenes.length - scenesWithPanorama.length;
+
+  if (!scenesWithPanorama.length) {
+    if (skippedAlreadyTiled || skippedNoPanorama) {
+      const parts = [];
+      if (skippedAlreadyTiled) parts.push(`already tiled: ${skippedAlreadyTiled}`);
+      if (skippedNoPanorama) parts.push(`without image: ${skippedNoPanorama}`);
+      updateStatus(`No scenes to process. Skipped ${parts.join(', ')}.`);
+    } else {
+      updateStatus('No scenes with uploaded 360 images.');
+    }
+    renderSceneList();
+    return;
+  }
+
+  const tileOptions = askTileOptions();
+  if (!tileOptions) {
+    updateStatus('Tiling cancelled.');
+    return;
+  }
+
+  if (tilePolicy === 'overwrite') {
+    scenesWithPanorama.forEach((scene) => resetSceneTiles(scene));
+  }
+
+  const originalSceneId = state.selectedSceneId;
+  let completed = 0;
+
+  try {
+    for (let i = 0; i < scenesWithPanorama.length; i += 1) {
+      const scene = scenesWithPanorama[i];
+      await generateTilesForScene({
+        scene,
+        tileOptions,
+        skipViewerRefresh: true,
+        sceneLabel: `${i + 1}/${scenesWithPanorama.length}`
+      });
+      completed += 1;
+    }
+    const skippedParts = [];
+    if (tilePolicy === 'skip' && skippedAlreadyTiled) skippedParts.push(`already tiled: ${skippedAlreadyTiled}`);
+    if (skippedNoPanorama) skippedParts.push(`without image: ${skippedNoPanorama}`);
+    const skippedPart = skippedParts.length ? ` Skipped ${skippedParts.join(', ')}.` : '';
+    updateStatus(`Tiles generated for ${completed}/${scenesWithPanorama.length} scenes.${skippedPart}`);
+  } catch (error) {
+    if (error?.message === 'cancelled') {
+      updateStatus(`Generate all tiles cancelled (${completed}/${scenesWithPanorama.length} completed).`);
+    } else {
+      updateStatus(`Generate all tiles failed (${completed}/${scenesWithPanorama.length} completed).`);
+    }
+  } finally {
+    const stillExists = state.project.scenes.some((scene) => scene.id === originalSceneId);
+    state.selectedSceneId = stillExists ? originalSceneId : state.project.scenes[0]?.id || null;
+    renderSceneList();
+    switchEditorScene();
+    scheduleMarkerRender();
+  }
+}
+
 async function buildCubemapTiles(sceneId, dataUrl, faceSize, tileSize) {
   const worker = getTilerWorker();
   if (worker) {
@@ -9587,6 +9762,7 @@ btnFloorplanZoomReset?.addEventListener('click', () => {
 });
 btnUploadPanorama.addEventListener('click', () => filePanorama.click());
 btnGenerateTiles.addEventListener('click', generateTilesForSelectedScenes);
+btnGenerateAllTiles?.addEventListener('click', generateAllTiles);
 btnTilesInfo?.addEventListener('click', showTileSizingInfo);
 btnDeleteSelectedScenes?.addEventListener('click', deleteSelectedScenes);
 btnPauseTiles.addEventListener('click', pauseTiling);
@@ -9756,6 +9932,9 @@ btnDuplicatePanoramaSkipAll?.addEventListener('click', () => resolveDuplicatePan
 btnDuplicatePanoramaList?.addEventListener('click', () => openDuplicatePanoramaListModal(duplicatePanoramaListEntries));
 btnDuplicatePanoramaCancel?.addEventListener('click', () => resolveDuplicatePanoramaChoice('cancel'));
 btnCloseDuplicatePanoramaList?.addEventListener('click', closeDuplicatePanoramaListModal);
+btnGenerateAllTilesSkip?.addEventListener('click', () => resolveGenerateAllTilesChoice('skip'));
+btnGenerateAllTilesOverwrite?.addEventListener('click', () => resolveGenerateAllTilesChoice('overwrite'));
+btnGenerateAllTilesCancel?.addEventListener('click', () => resolveGenerateAllTilesChoice('cancel'));
 deleteLinksScopeModal?.addEventListener('click', (event) => {
   if (event.target === deleteLinksScopeModal) {
     resolveDeleteLinksScope(null);
@@ -9771,6 +9950,11 @@ duplicatePanoramaListModal?.addEventListener('click', (event) => {
     closeDuplicatePanoramaListModal();
   }
 });
+generateAllTilesModal?.addEventListener('click', (event) => {
+  if (event.target === generateAllTilesModal) {
+    resolveGenerateAllTilesChoice('cancel');
+  }
+});
 mapWindowBackdrop?.addEventListener('click', () => {
   setFloorplanMapWindowOpen(false);
 });
@@ -9780,7 +9964,8 @@ window.addEventListener('keydown', (event) => {
     richEditorModal?.classList.contains('visible') ||
     deleteLinksScopeModal?.classList.contains('visible') ||
     duplicatePanoramaModal?.classList.contains('visible') ||
-    duplicatePanoramaListModal?.classList.contains('visible');
+    duplicatePanoramaListModal?.classList.contains('visible') ||
+    generateAllTilesModal?.classList.contains('visible');
   if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && !isTypingTarget(event.target) && !blockingModalOpen) {
     const moved = moveSceneSelectionBy(event.key === 'ArrowDown' ? 1 : -1);
     if (moved) {
@@ -9798,6 +9983,10 @@ window.addEventListener('keydown', (event) => {
   }
   if (event.key === 'Escape' && duplicatePanoramaModal?.classList.contains('visible')) {
     resolveDuplicatePanoramaChoice('cancel');
+    return;
+  }
+  if (event.key === 'Escape' && generateAllTilesModal?.classList.contains('visible')) {
+    resolveGenerateAllTilesChoice('cancel');
     return;
   }
   if (event.key === 'Escape' && richEditorModal?.classList.contains('visible')) {

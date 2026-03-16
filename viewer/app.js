@@ -24,9 +24,11 @@ const floorplanStage = document.getElementById('floorplan-stage');
 const floorplanImage = document.getElementById('floorplan-image');
 const floorplanMarkers = document.getElementById('floorplan-markers');
 const floorplanEmpty = document.getElementById('floorplan-empty');
+const floorplanPanel = document.getElementById('floorplan-panel');
 const btnFloorplanZoomOut = document.getElementById('btn-floorplan-zoom-out');
 const btnFloorplanZoomIn = document.getElementById('btn-floorplan-zoom-in');
 const btnFloorplanZoomReset = document.getElementById('btn-floorplan-zoom-reset');
+const btnFloorplanExpand = document.getElementById('btn-floorplan-expand');
 const floorplanZoomValue = document.getElementById('floorplan-zoom-value');
 const homePageOverlay = document.getElementById('home-page-overlay');
 const homePageFrame = document.getElementById('home-page-frame');
@@ -55,6 +57,11 @@ let activeGroupId = null;
 let floorplansByGroup = new Map();
 let floorplanZoomByGroup = new Map();
 let homePageVisible = false;
+let floorplanExpanded = false;
+let activeInfoHotspot = null;
+let activeInfoHotspotElement = null;
+let activeInfoHotspotAnchorOffset = null;
+let infoModalDragState = null;
 
 const FLOORPLAN_COLOR_MAP = {
   yellow: '#f0c84b',
@@ -78,10 +85,17 @@ const DEFAULT_INFO_FRAME_VIEWPORT_WIDTH = 1366;
 const DEFAULT_INFO_FRAME_VIEWPORT_HEIGHT = 768;
 const DEFAULT_INFO_BG_COLOR_KEY = 'black';
 const DEFAULT_INFO_BG_TRANSPARENCY = 0;
+const DEFAULT_INFO_FRAME_HOTSPOT_OFFSET_X = 0;
+const DEFAULT_INFO_FRAME_HOTSPOT_OFFSET_Y = 10;
 
 function normalizeTextAlign(value) {
   const candidate = String(value || 'left').trim().toLowerCase();
   return TEXT_ALIGN_VALUES.has(candidate) ? candidate : 'left';
+}
+
+function isZeroCssValue(value) {
+  const raw = String(value || '').trim().toLowerCase();
+  return raw === '0' || raw === '0px' || raw === '0rem' || raw === '0em' || raw === '0%';
 }
 
 function clampInfoFrameDimension(value, min, max, fallback) {
@@ -136,6 +150,17 @@ function normalizeInfoFrameViewport(value) {
   };
 }
 
+function normalizeInfoFrameAnchorOffset(value) {
+  const source = value && typeof value === 'object' ? value : {};
+  const offsetXRaw = Number.parseFloat(String(source.offsetX ?? ''));
+  const offsetYRaw = Number.parseFloat(String(source.offsetY ?? ''));
+  if (!Number.isFinite(offsetXRaw) || !Number.isFinite(offsetYRaw)) return null;
+  return {
+    offsetX: Math.max(-10000, Math.min(10000, Math.round(offsetXRaw))),
+    offsetY: Math.max(-10000, Math.min(10000, Math.round(offsetYRaw)))
+  };
+}
+
 function sanitizeInfoBackgroundTransparencyPercent(value, fallback = DEFAULT_INFO_BG_TRANSPARENCY) {
   const numeric = Number.parseInt(String(value ?? ''), 10);
   if (!Number.isFinite(numeric)) return fallback;
@@ -177,17 +202,109 @@ function getScaledInfoFramePositionForViewport(target, viewportWidth = window.in
   };
 }
 
+function getHotspotViewportPoint(element) {
+  if (!(element instanceof Element)) return null;
+  const rect = element.getBoundingClientRect();
+  if (!Number.isFinite(rect.left) || !Number.isFinite(rect.top)) return null;
+  return {
+    x: rect.left + (rect.width / 2),
+    y: rect.top + (rect.height / 2)
+  };
+}
+
+function getInfoModalAnchorOffset(hotspot) {
+  const sessionOffset = normalizeInfoFrameAnchorOffset(activeInfoHotspotAnchorOffset);
+  if (sessionOffset) return sessionOffset;
+  const savedOffset = normalizeInfoFrameAnchorOffset(hotspot?.infoFrameAnchorOffset);
+  if (savedOffset) return savedOffset;
+  return {
+    offsetX: DEFAULT_INFO_FRAME_HOTSPOT_OFFSET_X,
+    offsetY: DEFAULT_INFO_FRAME_HOTSPOT_OFFSET_Y
+  };
+}
+
+function updateInfoModalAnchorOffsetFromCurrentPosition() {
+  if (!activeInfoHotspot || !activeInfoHotspotElement || !modalContent) return;
+  const hotspotPoint = getHotspotViewportPoint(activeInfoHotspotElement);
+  if (!hotspotPoint) return;
+  const rect = modalContent.getBoundingClientRect();
+  activeInfoHotspotAnchorOffset = normalizeInfoFrameAnchorOffset({
+    offsetX: rect.left - hotspotPoint.x,
+    offsetY: rect.top - hotspotPoint.y
+  });
+}
+
+function stopInfoModalDrag() {
+  if (!infoModalDragState) return;
+  infoModalDragState = null;
+  window.removeEventListener('pointermove', handleInfoModalDragMove);
+  window.removeEventListener('pointerup', stopInfoModalDrag);
+  window.removeEventListener('pointercancel', stopInfoModalDrag);
+  updateInfoModalAnchorOffsetFromCurrentPosition();
+}
+
+function handleInfoModalDragMove(event) {
+  if (!infoModalDragState || !modalContent) return;
+  const deltaX = event.clientX - infoModalDragState.startX;
+  const deltaY = event.clientY - infoModalDragState.startY;
+  const width = modalContent.offsetWidth || 0;
+  const height = modalContent.offsetHeight || 0;
+  const maxLeft = Math.max(8, window.innerWidth - width - 8);
+  const maxTop = Math.max(8, window.innerHeight - height - 8);
+  const nextLeft = Math.min(maxLeft, Math.max(8, infoModalDragState.startLeft + deltaX));
+  const nextTop = Math.min(maxTop, Math.max(8, infoModalDragState.startTop + deltaY));
+  modalContent.style.left = `${Math.round(nextLeft)}px`;
+  modalContent.style.top = `${Math.round(nextTop)}px`;
+  updateInfoModalAnchorOffsetFromCurrentPosition();
+}
+
+function maybeStartInfoModalDrag(event) {
+  if (!modal?.classList.contains('visible')) return false;
+  if (!modal?.classList.contains('preview-modal-rich-like')) return false;
+  if (!modalContent || event.button !== 0) return false;
+  if (event.target instanceof Element && event.target.closest('#btn-close-modal')) return false;
+  const rect = modalContent.getBoundingClientRect();
+  const withinDragZone = (event.clientY - rect.top) <= 20;
+  if (!withinDragZone) return false;
+  infoModalDragState = {
+    startX: event.clientX,
+    startY: event.clientY,
+    startLeft: rect.left,
+    startTop: rect.top
+  };
+  event.preventDefault();
+  event.stopPropagation();
+  window.addEventListener('pointermove', handleInfoModalDragMove);
+  window.addEventListener('pointerup', stopInfoModalDrag);
+  window.addEventListener('pointercancel', stopInfoModalDrag);
+  return true;
+}
+
 function applyInfoModalFrameSize(hotspot) {
   if (!modalContent || !modalBody) return;
-  const frame = normalizeInfoFrameSize(hotspot?.infoFrameSize);
-  const maxWidth = Math.max(MIN_INFO_FRAME_WIDTH, window.innerWidth - 56);
-  const maxHeight = Math.max(MIN_INFO_FRAME_HEIGHT, window.innerHeight - 160);
-  const width = Math.min(frame.width, maxWidth);
-  const height = Math.min(frame.height, maxHeight);
-  const chromeWidth = Math.max(0, modalContent.offsetWidth - modalBody.clientWidth);
-  modalContent.style.width = `${Math.round(width + chromeWidth)}px`;
-  modalBody.style.height = `${height}px`;
-  modalBody.style.maxHeight = `${height}px`;
+  const frame = getViewportClampedInfoFrameSize(hotspot?.infoFrameSize);
+  modal.classList.add('preview-modal-rich-like');
+  modalContent.classList.add('modal-content-rich-preview');
+  modalBody.classList.add('preview-rich-surface');
+  modalContent.style.width = `${frame.width}px`;
+  modalContent.style.height = `${frame.height}px`;
+  modalBody.style.height = `${frame.height}px`;
+  modalBody.style.maxHeight = `${frame.height}px`;
+  const hotspotPoint = getHotspotViewportPoint(activeInfoHotspotElement);
+  const anchorOffset = hotspotPoint ? getInfoModalAnchorOffset(hotspot) : null;
+  const framePosition = hotspotPoint && anchorOffset
+    ? {
+        left: Math.round(hotspotPoint.x + anchorOffset.offsetX),
+        top: Math.round(hotspotPoint.y + anchorOffset.offsetY)
+      }
+    : getScaledInfoFramePositionForViewport(hotspot);
+  const maxLeft = Math.max(8, window.innerWidth - frame.width - 8);
+  const maxTop = Math.max(8, window.innerHeight - frame.height - 8);
+  const left = Number.isFinite(framePosition.left) ? framePosition.left : DEFAULT_INFO_FRAME_LEFT;
+  const top = Number.isFinite(framePosition.top) ? framePosition.top : DEFAULT_INFO_FRAME_TOP;
+  modalContent.style.left = `${Math.round(Math.min(maxLeft, Math.max(8, left)))}px`;
+  modalContent.style.top = `${Math.round(Math.min(maxTop, Math.max(8, top)))}px`;
+  applyInfoModalVisualStyle(hotspot);
 }
 
 function normalizeRichLayoutColumns(value, fallback = 2) {
@@ -261,8 +378,31 @@ function serializeRichLayoutWeights(weights) {
 function resetInfoModalFrameSize() {
   if (!modalContent || !modalBody) return;
   modalContent.style.removeProperty('width');
+  modalContent.style.removeProperty('height');
+  modalContent.style.removeProperty('left');
+  modalContent.style.removeProperty('top');
   modalBody.style.removeProperty('height');
   modalBody.style.removeProperty('max-height');
+  modalBody.style.removeProperty('background-color');
+  modal?.classList.remove('preview-modal-rich-like');
+  modalContent.classList.remove('modal-content-rich-preview');
+  modalBody.classList.remove('preview-rich-surface');
+}
+
+function getViewportClampedInfoFrameSize(frame) {
+  const normalized = normalizeInfoFrameSize(frame);
+  return {
+    width: Math.min(normalized.width, Math.max(MIN_INFO_FRAME_WIDTH, window.innerWidth - 16)),
+    height: Math.min(normalized.height, Math.max(MIN_INFO_FRAME_HEIGHT, window.innerHeight - 16))
+  };
+}
+
+function applyInfoModalVisualStyle(hotspot) {
+  if (!modalBody) return;
+  const visualStyle = getFrameVisualStyle(hotspot);
+  const hex = FLOORPLAN_COLOR_MAP[visualStyle.backgroundColorKey] || FLOORPLAN_COLOR_MAP[DEFAULT_INFO_BG_COLOR_KEY];
+  const alpha = (100 - visualStyle.backgroundTransparency) / 100;
+  modalBody.style.backgroundColor = withAlpha(hex, alpha);
 }
 
 function sanitizeImageSizeValue(value) {
@@ -397,7 +537,9 @@ function isSafeRichUrl(value, { allowDataImage = false } = {}) {
   if (allowDataImage && url.startsWith('data:image/')) return true;
   if (url.startsWith('http://') || url.startsWith('https://')) return true;
   if (url.startsWith('./') || url.startsWith('../') || url.startsWith('/')) return true;
-  return false;
+  if (/^[a-z][a-z0-9+.-]*:/i.test(url)) return false;
+  if (url.startsWith('//')) return false;
+  return true;
 }
 
 function parseYouTubeTimeToSeconds(value) {
@@ -546,10 +688,13 @@ function sanitizeRichHtml(rawHtml) {
         const col = Number.parseInt(String(originalAttrs['data-col'] || '').trim(), 10);
         const styleValue = String(originalAttrs.style || '');
         const savedColWidths = String(originalAttrs['data-col-widths'] || '').trim();
+        const savedBlockAlignRaw = String(originalAttrs['data-block-align'] || '').trim().toLowerCase();
         const widthMatch = styleValue.match(/(?:^|;)\s*width\s*:\s*([^;]+)/i);
         const heightMatch = styleValue.match(/(?:^|;)\s*height\s*:\s*([^;]+)/i);
         const minHeightMatch = styleValue.match(/(?:^|;)\s*min-height\s*:\s*([^;]+)/i);
         const gridTemplateMatch = styleValue.match(/(?:^|;)\s*grid-template-columns\s*:\s*([^;]+)/i);
+        const marginLeftMatch = styleValue.match(/(?:^|;)\s*margin-left\s*:\s*([^;]+)/i);
+        const marginRightMatch = styleValue.match(/(?:^|;)\s*margin-right\s*:\s*([^;]+)/i);
         const requestedWidth = sanitizeImageSizeValue(widthMatch ? widthMatch[1] : '');
         const requestedHeight = sanitizeImageMaxHeightValue(heightMatch ? heightMatch[1] : '');
         const requestedMinHeight = sanitizeImageMaxHeightValue(minHeightMatch ? minHeightMatch[1] : '');
@@ -575,6 +720,26 @@ function sanitizeRichHtml(rawHtml) {
           }
           if (requestedMinHeight) {
             node.style.minHeight = requestedMinHeight;
+          }
+          let blockAlign = 'left';
+          if (savedBlockAlignRaw === 'center' || savedBlockAlignRaw === 'right' || savedBlockAlignRaw === 'left') {
+            blockAlign = savedBlockAlignRaw;
+          } else {
+            const ml = String(marginLeftMatch ? marginLeftMatch[1] : '').trim().toLowerCase();
+            const mr = String(marginRightMatch ? marginRightMatch[1] : '').trim().toLowerCase();
+            if (ml === 'auto' && mr === 'auto') blockAlign = 'center';
+            else if (ml === 'auto' && isZeroCssValue(mr)) blockAlign = 'right';
+          }
+          node.setAttribute('data-block-align', blockAlign);
+          if (blockAlign === 'center') {
+            node.style.marginLeft = 'auto';
+            node.style.marginRight = 'auto';
+          } else if (blockAlign === 'right') {
+            node.style.marginLeft = 'auto';
+            node.style.marginRight = '0';
+          } else {
+            node.style.marginLeft = '0';
+            node.style.marginRight = 'auto';
           }
         }
         if (Number.isFinite(col) && col >= 1 && col <= 12) {
@@ -624,6 +789,9 @@ function sanitizeRichHtml(rawHtml) {
           const widthMatch = styleValue.match(/(?:^|;)\s*width\s*:\s*([^;]+)/i);
           const maxHeightMatch = styleValue.match(/(?:^|;)\s*max-height\s*:\s*([^;]+)/i);
           const floatMatch = styleValue.match(/(?:^|;)\s*float\s*:\s*(left|right|none)/i);
+          const marginLeftMatch = styleValue.match(/(?:^|;)\s*margin-left\s*:\s*([^;]+)/i);
+          const marginRightMatch = styleValue.match(/(?:^|;)\s*margin-right\s*:\s*([^;]+)/i);
+          const savedAlignRaw = String(originalAttrs['data-align'] || '').trim().toLowerCase();
           const wrapFromData = normalizeImageWrap(originalAttrs['data-wrap'] || '');
           const requestedWrap = normalizeImageWrap(wrapFromData !== 'none' ? wrapFromData : (floatMatch ? floatMatch[1] : 'none'));
           const requestedSize = sanitizeImageSizeValue(widthMatch ? widthMatch[1] : (originalAttrs.width || ''));
@@ -647,7 +815,28 @@ function sanitizeRichHtml(rawHtml) {
           } else {
             node.style.float = 'none';
             node.style.display = 'block';
-            node.style.margin = '0.5em 0';
+            let mediaAlign = savedAlignRaw === 'center' || savedAlignRaw === 'right' || savedAlignRaw === 'left'
+              ? savedAlignRaw
+              : 'left';
+            if (!originalAttrs['data-align']) {
+              const ml = String(marginLeftMatch ? marginLeftMatch[1] : '').trim().toLowerCase();
+              const mr = String(marginRightMatch ? marginRightMatch[1] : '').trim().toLowerCase();
+              if (ml === 'auto' && mr === 'auto') mediaAlign = 'center';
+              else if (ml === 'auto' && isZeroCssValue(mr)) mediaAlign = 'right';
+            }
+            node.setAttribute('data-align', mediaAlign);
+            node.style.marginTop = '0.5em';
+            node.style.marginBottom = '0.5em';
+            if (mediaAlign === 'center') {
+              node.style.marginLeft = 'auto';
+              node.style.marginRight = 'auto';
+            } else if (mediaAlign === 'right') {
+              node.style.marginLeft = 'auto';
+              node.style.marginRight = '0';
+            } else {
+              node.style.marginLeft = '0';
+              node.style.marginRight = 'auto';
+            }
           }
           node.setAttribute('loading', 'lazy');
         } else {
@@ -665,6 +854,9 @@ function sanitizeRichHtml(rawHtml) {
           const styleValue = String(originalAttrs.style || '');
           const widthMatch = styleValue.match(/(?:^|;)\s*width\s*:\s*([^;]+)/i);
           const heightMatch = styleValue.match(/(?:^|;)\s*height\s*:\s*([^;]+)/i);
+          const marginLeftMatch = styleValue.match(/(?:^|;)\s*margin-left\s*:\s*([^;]+)/i);
+          const marginRightMatch = styleValue.match(/(?:^|;)\s*margin-right\s*:\s*([^;]+)/i);
+          const savedAlignRaw = String(originalAttrs['data-align'] || '').trim().toLowerCase();
           const requestedWidth = sanitizeImageSizeValue(widthMatch ? widthMatch[1] : (originalAttrs.width || ''));
           const requestedHeight = sanitizeImageMaxHeightValue(heightMatch ? heightMatch[1] : (originalAttrs.height || ''));
           if (requestedWidth) {
@@ -672,6 +864,29 @@ function sanitizeRichHtml(rawHtml) {
           }
           if (requestedHeight) {
             node.style.height = requestedHeight;
+          }
+          node.style.display = 'block';
+          node.style.marginTop = '0.5em';
+          node.style.marginBottom = '0.5em';
+          let mediaAlign = savedAlignRaw === 'center' || savedAlignRaw === 'right' || savedAlignRaw === 'left'
+            ? savedAlignRaw
+            : 'left';
+          if (!originalAttrs['data-align']) {
+            const ml = String(marginLeftMatch ? marginLeftMatch[1] : '').trim().toLowerCase();
+            const mr = String(marginRightMatch ? marginRightMatch[1] : '').trim().toLowerCase();
+            if (ml === 'auto' && mr === 'auto') mediaAlign = 'center';
+            else if (ml === 'auto' && isZeroCssValue(mr)) mediaAlign = 'right';
+          }
+          node.setAttribute('data-align', mediaAlign);
+          if (mediaAlign === 'center') {
+            node.style.marginLeft = 'auto';
+            node.style.marginRight = 'auto';
+          } else if (mediaAlign === 'right') {
+            node.style.marginLeft = 'auto';
+            node.style.marginRight = '0';
+          } else {
+            node.style.marginLeft = '0';
+            node.style.marginRight = 'auto';
           }
         } else {
           const parent = node.parentNode;
@@ -693,6 +908,9 @@ function sanitizeRichHtml(rawHtml) {
           const styleValue = String(originalAttrs.style || '');
           const widthMatch = styleValue.match(/(?:^|;)\s*width\s*:\s*([^;]+)/i);
           const heightMatch = styleValue.match(/(?:^|;)\s*height\s*:\s*([^;]+)/i);
+          const marginLeftMatch = styleValue.match(/(?:^|;)\s*margin-left\s*:\s*([^;]+)/i);
+          const marginRightMatch = styleValue.match(/(?:^|;)\s*margin-right\s*:\s*([^;]+)/i);
+          const savedAlignRaw = String(originalAttrs['data-align'] || '').trim().toLowerCase();
           const requestedWidth = sanitizeImageSizeValue(widthMatch ? widthMatch[1] : (originalAttrs.width || ''));
           const requestedHeight = sanitizeImageMaxHeightValue(heightMatch ? heightMatch[1] : (originalAttrs.height || ''));
           if (requestedWidth) {
@@ -700,6 +918,29 @@ function sanitizeRichHtml(rawHtml) {
           }
           if (requestedHeight) {
             node.style.height = requestedHeight;
+          }
+          node.style.display = 'block';
+          node.style.marginTop = '0.5em';
+          node.style.marginBottom = '0.5em';
+          let mediaAlign = savedAlignRaw === 'center' || savedAlignRaw === 'right' || savedAlignRaw === 'left'
+            ? savedAlignRaw
+            : 'left';
+          if (!originalAttrs['data-align']) {
+            const ml = String(marginLeftMatch ? marginLeftMatch[1] : '').trim().toLowerCase();
+            const mr = String(marginRightMatch ? marginRightMatch[1] : '').trim().toLowerCase();
+            if (ml === 'auto' && mr === 'auto') mediaAlign = 'center';
+            else if (ml === 'auto' && isZeroCssValue(mr)) mediaAlign = 'right';
+          }
+          node.setAttribute('data-align', mediaAlign);
+          if (mediaAlign === 'center') {
+            node.style.marginLeft = 'auto';
+            node.style.marginRight = 'auto';
+          } else if (mediaAlign === 'right') {
+            node.style.marginLeft = 'auto';
+            node.style.marginRight = '0';
+          } else {
+            node.style.marginLeft = '0';
+            node.style.marginRight = 'auto';
           }
           node.style.border = '0';
         } else {
@@ -770,6 +1011,7 @@ function closeHomePageOverlay() {
   homePageVisible = false;
   if (!homePageOverlay || !homePageBody || !homePageFrame) return;
   homePageBody.innerHTML = '';
+  homePageBody.classList.remove('preview-rich-surface');
   homePageOverlay.classList.add('hidden');
   homePageOverlay.setAttribute('aria-hidden', 'true');
   homePageFrame.style.removeProperty('width');
@@ -802,13 +1044,11 @@ function renderHomePage(project = projectData) {
     return;
   }
   const homePage = getProjectHomePage(project);
-  const wrapper = document.createElement('div');
-  wrapper.className = 'block home-page-block';
-  wrapper.innerHTML = sanitizeRichHtml(homePage.richContentHtml);
-  trimTrailingEmptyParagraphs(wrapper);
-  resolveRichMediaReferencesInContainer(wrapper, project, { preferDataUrl: false });
   homePageBody.innerHTML = '';
-  homePageBody.appendChild(wrapper);
+  homePageBody.classList.add('preview-rich-surface');
+  homePageBody.innerHTML = sanitizeRichHtml(homePage.richContentHtml) || '<p><br></p>';
+  trimTrailingEmptyParagraphs(homePageBody);
+  resolveRichMediaReferencesInContainer(homePageBody, project, { preferDataUrl: false });
   homePageVisible = true;
   homePageOverlay.classList.remove('hidden');
   homePageOverlay.setAttribute('aria-hidden', 'false');
@@ -848,26 +1088,28 @@ function startTourFromHomePage() {
   }
 }
 
-function openModal(hotspot) {
-  modalTitle.textContent = hotspot.title || 'Hotspot';
+function openModal(hotspot, sourceElement = null) {
+  modalTitle.textContent = '';
   modalBody.innerHTML = '';
+  resetInfoModalFrameSize();
+  activeInfoHotspot = null;
+  activeInfoHotspotElement = sourceElement instanceof Element ? sourceElement : null;
+  activeInfoHotspotAnchorOffset = null;
 
   const blocks = Array.isArray(hotspot.contentBlocks) ? hotspot.contentBlocks : [];
   const isSceneLinkHotspot = blocks.some((block) => block.type === 'scene');
   if (!isSceneLinkHotspot && typeof hotspot.richContentHtml === 'string') {
+    activeInfoHotspot = hotspot;
     applyInfoModalFrameSize(hotspot);
-    const wrapper = document.createElement('div');
-    wrapper.className = 'block';
-    wrapper.innerHTML = sanitizeRichHtml(hotspot.richContentHtml);
-    trimTrailingEmptyParagraphs(wrapper);
-    resolveRichMediaReferencesInContainer(wrapper, projectData, { preferDataUrl: false });
-    modalBody.appendChild(wrapper);
+    modalBody.innerHTML = sanitizeRichHtml(hotspot.richContentHtml) || '<p><br></p>';
+    trimTrailingEmptyParagraphs(modalBody);
+    resolveRichMediaReferencesInContainer(modalBody, projectData, { preferDataUrl: false });
     modal.classList.add('visible');
     modal.setAttribute('aria-hidden', 'false');
     return;
   }
 
-  resetInfoModalFrameSize();
+  modalTitle.textContent = hotspot.title || 'Hotspot';
 
   blocks.forEach((block) => {
     const wrapper = document.createElement('div');
@@ -959,6 +1201,10 @@ function openModal(hotspot) {
 }
 
 function closeModal() {
+  stopInfoModalDrag();
+  activeInfoHotspot = null;
+  activeInfoHotspotElement = null;
+  activeInfoHotspotAnchorOffset = null;
   modalBody?.querySelectorAll('video,audio').forEach((mediaEl) => {
     try {
       mediaEl.pause();
@@ -1281,6 +1527,11 @@ function createHotspotElement(hotspot) {
     wrapper.style.setProperty('--scene-link-color', linkColor);
     wrapper.style.setProperty('--scene-link-border', darkenHex(linkColor, 0.24));
     wrapper.style.setProperty('--scene-link-ring', withAlpha(linkColor, 0.35));
+  } else {
+    const infoColor = FLOORPLAN_COLOR_MAP[normalizeFloorplanColorKey(hotspot.markerColorKey || 'yellow')];
+    wrapper.style.setProperty('--info-hotspot-color', withAlpha(infoColor, 0.9));
+    wrapper.style.setProperty('--info-hotspot-border', darkenHex(infoColor, 0.28));
+    wrapper.style.setProperty('--info-hotspot-glow', withAlpha(infoColor, 0.4));
   }
 
   const applyDefaultStyle = () => {
@@ -1298,7 +1549,7 @@ function createHotspotElement(hotspot) {
       switchScene(targetScene, { syncGroup: true });
       return;
     }
-    openModal(hotspot);
+    openModal(hotspot, wrapper);
   });
 
   return wrapper;
@@ -1379,6 +1630,22 @@ function applyFloorplanZoom() {
   updateFloorplanZoomLabel();
 }
 
+function updateFloorplanExpandButton() {
+  if (!btnFloorplanExpand) return;
+  btnFloorplanExpand.textContent = floorplanExpanded ? 'Minimise' : 'Maximise';
+  btnFloorplanExpand.setAttribute('aria-pressed', floorplanExpanded ? 'true' : 'false');
+}
+
+function setFloorplanExpanded(next) {
+  floorplanExpanded = Boolean(next);
+  floorplanPanel?.classList.toggle('maximized', floorplanExpanded);
+  updateFloorplanExpandButton();
+}
+
+function toggleFloorplanExpanded() {
+  setFloorplanExpanded(!floorplanExpanded);
+}
+
 function setActiveFloorplanZoom(nextZoom) {
   if (!activeGroupId) return;
   const clamped = Math.min(4, Math.max(0.5, nextZoom));
@@ -1428,7 +1695,7 @@ function renderFloorplanMarkers() {
     }
     marker.style.left = `${node.x * 100}%`;
     marker.style.top = `${node.y * 100}%`;
-    marker.title = targetScene.data.name || 'Scene';
+    marker.title = String(targetScene.data.alias || '').trim() || targetScene.data.name || 'Scene';
     const markerColor = FLOORPLAN_COLOR_MAP[normalizeFloorplanColorKey(node.colorKey || fallbackColorKey)];
     const markerBorder = darkenHex(markerColor, 0.24);
     const markerRing = withAlpha(markerColor, 0.35);
@@ -1490,7 +1757,7 @@ function renderSceneList() {
 
   visibleScenes.forEach((scene) => {
     const button = document.createElement('button');
-    button.textContent = scene.data.name;
+    button.textContent = String(scene.data.alias || '').trim() || scene.data.name;
     button.classList.toggle('active', currentScene?.data?.id === scene.data.id);
     button.addEventListener('click', () => switchScene(scene));
     sceneList.appendChild(button);
@@ -1710,6 +1977,7 @@ btnFloorplanZoomIn?.addEventListener('click', () => {
 btnFloorplanZoomReset?.addEventListener('click', () => {
   setActiveFloorplanZoom(1);
 });
+btnFloorplanExpand?.addEventListener('click', toggleFloorplanExpanded);
 groupSelect?.addEventListener('change', () => {
   activeGroupId = groupSelect.value;
   renderFloorplan();
@@ -1723,10 +1991,17 @@ groupSelect?.addEventListener('change', () => {
 });
 
 document.getElementById('btn-close-modal').addEventListener('click', closeModal);
+modalContent?.addEventListener('pointerdown', (event) => {
+  maybeStartInfoModalDrag(event);
+});
 btnHomePageStart?.addEventListener('click', startTourFromHomePage);
 btnHomeToggle?.addEventListener('click', toggleHomePageOverlay);
+updateFloorplanExpandButton();
 window.addEventListener('resize', () => {
   if (homePageVisible) {
     applyHomePageFrame(projectData);
+  }
+  if (modal?.classList.contains('visible') && activeInfoHotspot) {
+    applyInfoModalFrameSize(activeInfoHotspot);
   }
 });

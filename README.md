@@ -25,6 +25,7 @@ The project is operational and currently includes:
 - detailed group deletion warning with cascade impact summary
 - scene-link hotspots
 - informational hotspots with rich-content editor
+- informational hotspot marker color selection preserved in static export
 - hotspot rich content supports text, images, local/embedded video, links, and column layouts
 - optional Home Page welcome screen with rich content and `Start Tour`
 - Home Page uses fullscreen viewer overlay and a dedicated editor mode (editor keeps right tools panel accessible)
@@ -48,11 +49,13 @@ Verified synchronization points between `editor` and `viewer`:
 - static export always bundles current viewer runtime files (`viewer/index.html`, `viewer/app.js`, `viewer/styles.css`, `viewer/vendor/*`)
 - scene-link hotspots (`contentBlocks.type = scene`) are resolved in viewer and switch scene correctly
 - scene alias is used consistently by editor/viewer for `Go to ...` link labels
+- scene alias is used by the exported viewer scene list and floorplan node titles
 - per-group floorplan nodes are exported with per-node `colorKey` (fallback: floorplan `markerColorKey`) and rendered in viewer
 - group `mainSceneId` from editor is now respected by viewer on initial load and when switching group
 - project `activeGroupId` from editor is now respected by viewer on initial load
 - project `homePage` from editor is now rendered by viewer before entering the tour
 - viewer header includes a `Home` toggle to reopen/close the Home Page after the tour has started
+- exported viewer info hotspots preserve editor marker colors
 
 Practical implication: if a tour behaves correctly in editor and you export a static package, the exported viewer follows the same main-group/main-scene entry logic and can show the configured Home Page first.
 
@@ -138,6 +141,7 @@ References:
 Static export creates (ZIP or folder) a structure similar to:
 
 ```text
+index.html
 shared/sample-tour.json
 viewer/index.html
 viewer/app.js
@@ -153,6 +157,7 @@ viewer/tiles/<scene-id>/0/<face>/<y>/<x>.jpg
 Operational notes:
 - Generated tiles stay in memory until static export is executed.
 - Export converts `dataUrl` assets into real files and rewrites JSON paths.
+- Export also generates a root `index.html` that redirects to `viewer/index.html`, useful for GitHub Pages.
 - Static export warns before continuing if any scene has no tiles or has fewer than 2 scene links.
 - In editor UI, scene-wide actions are grouped in the right panel under `Scene Actions`.
 - Group-level image actions are in the left `Groups` panel (`Upload Img`, `Delete All Img`).

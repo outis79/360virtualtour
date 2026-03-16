@@ -127,6 +127,7 @@
           <div class="inline-actions">
             <button class="btn ghost" id="btn-tiles-info">Info</button>
             <button class="btn ghost" id="btn-generate-tiles">Generate Tiles</button>
+            <button class="btn ghost" id="btn-generate-all-tiles">Generate All Tiles</button>
           </div>
           <div class="inline-actions">
             <button class="btn ghost" id="btn-pause-tiles">Pause</button>
@@ -334,6 +335,22 @@
         <button class="btn ghost" id="btn-close-duplicate-panorama-list">Close</button>
       </div>
       <div class="modal-body" id="duplicate-panorama-list-body"></div>
+    </div>
+  </div>
+
+  <div class="hotspot-modal" id="generate-all-tiles-modal" aria-hidden="true">
+    <div class="modal-content modal-content-compact">
+      <div class="modal-header">
+        <div class="modal-title">Tiles Already Exist</div>
+      </div>
+      <div class="modal-body">
+        <div class="panel-hint duplicate-modal-message" id="generate-all-tiles-message"></div>
+        <div class="confirm-modal-actions">
+          <button class="btn ghost" id="btn-generate-all-tiles-skip">Skip Existing</button>
+          <button class="btn ghost" id="btn-generate-all-tiles-overwrite">Overwrite</button>
+          <button class="btn" id="btn-generate-all-tiles-cancel">Cancel</button>
+        </div>
+      </div>
     </div>
   </div>
 

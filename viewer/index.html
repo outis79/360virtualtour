@@ -48,12 +48,13 @@
         <div class="scene-list" id="scene-list"></div>
       </div>
 
-      <div class="panel-section">
+      <div class="panel-section floorplan-panel" id="floorplan-panel">
         <div class="section-title">Map</div>
         <div class="floorplan-tools">
           <button class="btn ghost" id="btn-floorplan-zoom-out">-</button>
           <button class="btn ghost" id="btn-floorplan-zoom-in">+</button>
           <button class="btn ghost" id="btn-floorplan-zoom-reset">Reset</button>
+          <button class="btn ghost" id="btn-floorplan-expand">Maximise</button>
           <span class="floorplan-zoom-value" id="floorplan-zoom-value">100%</span>
         </div>
         <div class="floorplan-wrap">
@@ -74,7 +75,7 @@
   <div class="hotspot-modal" id="hotspot-modal" aria-hidden="true">
     <div class="modal-content">
       <div class="modal-header">
-        <h2 id="modal-title">Hotspot</h2>
+        <h2 id="modal-title"></h2>
         <button class="btn ghost modal-close-x" id="btn-close-modal" aria-label="Close popup">&times;</button>
       </div>
       <div id="modal-body" class="modal-body"></div>
