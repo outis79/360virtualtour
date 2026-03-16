@@ -64,6 +64,11 @@ let activeInfoHotspotElement = null;
 let activeInfoHotspotAnchorOffset = null;
 let infoModalDragState = null;
 let activeSceneLinkTooltipElement = null;
+let quickInfoHoverHotspot = null;
+let quickInfoHoverElement = null;
+let quickInfoHoverTimer = null;
+let quickInfoCloseTimer = null;
+let quickInfoModalHover = false;
 
 const FLOORPLAN_COLOR_MAP = {
   yellow: '#f0c84b',
@@ -89,10 +94,15 @@ const DEFAULT_INFO_BG_COLOR_KEY = 'black';
 const DEFAULT_INFO_BG_TRANSPARENCY = 0;
 const DEFAULT_INFO_FRAME_HOTSPOT_OFFSET_X = 0;
 const DEFAULT_INFO_FRAME_HOTSPOT_OFFSET_Y = 10;
+const DEFAULT_INFO_HOTSPOT_DISPLAY_MODE = 'click';
 
 function normalizeTextAlign(value) {
   const candidate = String(value || 'left').trim().toLowerCase();
   return TEXT_ALIGN_VALUES.has(candidate) ? candidate : 'left';
+}
+
+function normalizeInfoHotspotDisplayMode(value) {
+  return String(value || '').trim().toLowerCase() === 'quick' ? 'quick' : 'click';
 }
 
 function isZeroCssValue(value) {
@@ -1091,12 +1101,16 @@ function startTourFromHomePage() {
 }
 
 function openModal(hotspot, sourceElement = null) {
+  clearQuickInfoTimers();
   modalTitle.textContent = '';
   modalBody.innerHTML = '';
   resetInfoModalFrameSize();
   activeInfoHotspot = null;
   activeInfoHotspotElement = sourceElement instanceof Element ? sourceElement : null;
   activeInfoHotspotAnchorOffset = null;
+  quickInfoHoverHotspot = isQuickInfoHotspot(hotspot) ? hotspot : null;
+  quickInfoHoverElement = sourceElement instanceof Element ? sourceElement : null;
+  quickInfoModalHover = false;
 
   const blocks = Array.isArray(hotspot.contentBlocks) ? hotspot.contentBlocks : [];
   const isSceneLinkHotspot = blocks.some((block) => block.type === 'scene');
@@ -1203,6 +1217,10 @@ function openModal(hotspot, sourceElement = null) {
 }
 
 function closeModal() {
+  clearQuickInfoTimers();
+  quickInfoHoverHotspot = null;
+  quickInfoHoverElement = null;
+  quickInfoModalHover = false;
   stopInfoModalDrag();
   activeInfoHotspot = null;
   activeInfoHotspotElement = null;
@@ -1268,6 +1286,7 @@ function normalizeProject(rawProject) {
     }
     scene.hotspots.forEach((hotspot) => {
       hotspot.infoFrameSize = normalizeInfoFrameSize(hotspot.infoFrameSize);
+      hotspot.displayMode = normalizeInfoHotspotDisplayMode(hotspot.displayMode);
       const blocks = Array.isArray(hotspot?.contentBlocks) ? hotspot.contentBlocks : [];
       const hasSceneLink = blocks.some((block) => block?.type === 'scene');
       blocks.forEach((block) => {
@@ -1557,6 +1576,66 @@ function showSceneLinkTooltip(targetElement, text) {
   positionSceneLinkTooltip(targetElement);
 }
 
+function isHoverCapablePointer() {
+  return typeof window.matchMedia === 'function'
+    && window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+}
+
+function isQuickInfoHotspot(hotspot) {
+  const blocks = Array.isArray(hotspot?.contentBlocks) ? hotspot.contentBlocks : [];
+  const hasSceneLink = blocks.some((block) => block?.type === 'scene');
+  return !hasSceneLink && normalizeInfoHotspotDisplayMode(hotspot?.displayMode) === 'quick';
+}
+
+function clearQuickInfoTimers() {
+  if (quickInfoHoverTimer) {
+    clearTimeout(quickInfoHoverTimer);
+    quickInfoHoverTimer = null;
+  }
+  if (quickInfoCloseTimer) {
+    clearTimeout(quickInfoCloseTimer);
+    quickInfoCloseTimer = null;
+  }
+}
+
+function cancelQuickInfoClose() {
+  if (quickInfoCloseTimer) {
+    clearTimeout(quickInfoCloseTimer);
+    quickInfoCloseTimer = null;
+  }
+}
+
+function scheduleQuickInfoClose() {
+  cancelQuickInfoClose();
+  quickInfoCloseTimer = setTimeout(() => {
+    quickInfoCloseTimer = null;
+    if (!quickInfoHoverElement && !quickInfoModalHover && quickInfoHoverHotspot) {
+      closeModal();
+    }
+  }, 140);
+}
+
+function scheduleQuickInfoOpen(hotspot, sourceElement) {
+  if (!isQuickInfoHotspot(hotspot) || !isHoverCapablePointer() || !(sourceElement instanceof Element)) {
+    return;
+  }
+  cancelQuickInfoClose();
+  if (quickInfoHoverHotspot?.id === hotspot.id && modal?.classList.contains('visible')) {
+    return;
+  }
+  if (quickInfoHoverTimer) {
+    clearTimeout(quickInfoHoverTimer);
+  }
+  quickInfoHoverElement = sourceElement;
+  quickInfoHoverTimer = setTimeout(() => {
+    quickInfoHoverTimer = null;
+    if (!quickInfoHoverElement || quickInfoHoverElement !== sourceElement) {
+      return;
+    }
+    openModal(hotspot, sourceElement);
+  }, 140);
+}
+
 function createHotspotElement(hotspot) {
   const wrapper = document.createElement('div');
   wrapper.className = 'hotspot';
@@ -1582,6 +1661,18 @@ function createHotspotElement(hotspot) {
     wrapper.style.setProperty('--info-hotspot-color', withAlpha(infoColor, 0.9));
     wrapper.style.setProperty('--info-hotspot-border', darkenHex(infoColor, 0.28));
     wrapper.style.setProperty('--info-hotspot-glow', withAlpha(infoColor, 0.4));
+    if (isQuickInfoHotspot(hotspot) && isHoverCapablePointer()) {
+      wrapper.addEventListener('mouseenter', () => {
+        quickInfoHoverElement = wrapper;
+        scheduleQuickInfoOpen(hotspot, wrapper);
+      });
+      wrapper.addEventListener('mouseleave', () => {
+        if (quickInfoHoverElement === wrapper) {
+          quickInfoHoverElement = null;
+        }
+        scheduleQuickInfoClose();
+      });
+    }
   }
 
   const applyDefaultStyle = () => {
@@ -1598,6 +1689,9 @@ function createHotspotElement(hotspot) {
     const targetScene = getHotspotSceneTargetRuntime(hotspot);
     if (targetScene) {
       switchScene(targetScene, { syncGroup: true });
+      return;
+    }
+    if (isQuickInfoHotspot(hotspot) && isHoverCapablePointer()) {
       return;
     }
     openModal(hotspot, wrapper);
@@ -2048,6 +2142,18 @@ groupSelect?.addEventListener('change', () => {
 document.getElementById('btn-close-modal').addEventListener('click', closeModal);
 modalContent?.addEventListener('pointerdown', (event) => {
   maybeStartInfoModalDrag(event);
+});
+modalContent?.addEventListener('mouseenter', () => {
+  if (quickInfoHoverHotspot) {
+    quickInfoModalHover = true;
+    cancelQuickInfoClose();
+  }
+});
+modalContent?.addEventListener('mouseleave', () => {
+  if (quickInfoHoverHotspot) {
+    quickInfoModalHover = false;
+    scheduleQuickInfoClose();
+  }
 });
 btnHomePageStart?.addEventListener('click', startTourFromHomePage);
 btnHomeToggle?.addEventListener('click', toggleHomePageOverlay);

@@ -243,9 +243,11 @@ body.vr-mode .home-page-overlay {
   max-height: calc(100vh - 104px);
   z-index: 25;
   padding: 16px;
+  background: rgba(17, 24, 32, 0.6);
   border: 1px solid var(--outline);
   border-radius: 12px;
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(6px);
 }
 
 .floorplan-panel.maximized .floorplan-wrap {

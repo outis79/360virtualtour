@@ -1,4 +1,4 @@
-# 360 Virtual Tour Builder
+# Iterpano Builder
 
 Client-side web app to create, edit, export, and view 360 tours powered by Marzipano.
 
@@ -26,6 +26,7 @@ The project is operational and currently includes:
 - scene-link hotspots
 - scene-link hotspots with exported custom hover tooltip (`Go to <scene alias>`)
 - informational hotspots with rich-content editor
+- informational hotspots support `Normal` and `Quick` display types
 - informational hotspot marker color selection preserved in static export
 - hotspot rich content supports text, images, local/embedded video, links, and column layouts
 - optional Home Page welcome screen with rich content and `Start Tour`
@@ -59,6 +60,7 @@ Verified synchronization points between `editor` and `viewer`:
 - viewer header includes a `Home` toggle to reopen/close the Home Page after the tour has started
 - exported viewer info hotspots preserve editor marker colors
 - exported viewer closes open info modals automatically when scene changes
+- exported viewer quick info hotspots use hover on desktop and tap fallback on touch devices
 
 Practical implication: if a tour behaves correctly in editor and you export a static package, the exported viewer follows the same main-group/main-scene entry logic and can show the configured Home Page first.
 
@@ -165,6 +167,7 @@ Operational notes:
 - In editor UI, scene-wide actions are grouped in the right panel under `Scene Actions`.
 - Group-level image actions are in the left `Groups` panel (`Upload Img`, `Delete All Img`).
 - Map maximize is constrained to a floating area over the panorama (full height, about 1/3 width).
+- In the exported viewer, maximized map panel uses the viewer dark theme with 60% transparency for control readability.
 
 ## Project Package ZIP
 `Export Project Package ZIP` creates a reimportable editor package intended for backup/restore of authoring work.

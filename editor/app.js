@@ -58,6 +58,7 @@ const linkCommentInput = document.getElementById('link-comment');
 const linkNoteLabel = document.getElementById('link-note-label');
 const linkNewColorSelect = document.getElementById('link-new-color');
 const infoHotspotSelect = document.getElementById('info-hotspot-select');
+const infoHotspotModeSelect = document.getElementById('info-hotspot-mode');
 const infoHotspotColorSelect = document.getElementById('info-hotspot-color');
 const contentBlocks = document.getElementById('content-blocks');
 const infoContentSectionBody = contentBlocks?.closest('.section-body') || null;
@@ -225,6 +226,11 @@ let richModalResizeState = null;
 let activeRichSizeInput = null;
 let previewHotspotContext = null;
 let previewModalDragState = null;
+let quickPreviewOpenHotspotId = null;
+let quickPreviewHoverMarkerId = null;
+let quickPreviewHoverModal = false;
+let quickPreviewOpenTimer = null;
+let quickPreviewCloseTimer = null;
 let infoHotspotCreateMode = false;
 let infoHotspotEditMode = false;
 let homePageEditMode = false;
@@ -248,6 +254,7 @@ const DEFAULT_INFO_FRAME_TOP = 112;
 const DEFAULT_INFO_FRAME_HOTSPOT_OFFSET_X = 0;
 const DEFAULT_INFO_FRAME_HOTSPOT_OFFSET_Y = 10;
 const DEFAULT_INFO_HOTSPOT_COLOR_KEY = 'yellow';
+const DEFAULT_INFO_HOTSPOT_DISPLAY_MODE = 'click';
 const DEFAULT_INFO_BG_COLOR_KEY = 'black';
 const DEFAULT_INFO_BG_TRANSPARENCY = 0;
 const MIN_INFO_FRAME_WIDTH = 44;
@@ -737,6 +744,10 @@ function maybeStartPreviewModalDrag(event) {
 function normalizeTextAlign(value) {
   const candidate = String(value || 'left').trim().toLowerCase();
   return TEXT_ALIGN_VALUES.has(candidate) ? candidate : 'left';
+}
+
+function normalizeInfoHotspotDisplayMode(value) {
+  return String(value || '').trim().toLowerCase() === 'quick' ? 'quick' : 'click';
 }
 
 function isZeroCssValue(value) {
@@ -3303,6 +3314,7 @@ function loadProject(project) {
       hotspot.infoFramePosition = normalizeInfoFramePosition(hotspot.infoFramePosition);
       hotspot.infoFrameViewport = normalizeInfoFrameViewport(hotspot.infoFrameViewport);
       hotspot.infoFrameAnchorOffset = normalizeInfoFrameAnchorOffset(hotspot.infoFrameAnchorOffset);
+      hotspot.displayMode = normalizeInfoHotspotDisplayMode(hotspot.displayMode);
       hotspot.contentBlocks.forEach((block) => {
         if (block.type === 'text') {
           block.align = normalizeTextAlign(block.align);
@@ -3562,6 +3574,10 @@ function isSceneLinkHotspot(hotspot) {
 
 function isInfoHotspot(hotspot) {
   return Boolean(hotspot) && !isSceneLinkHotspot(hotspot);
+}
+
+function isQuickInfoHotspot(hotspot) {
+  return isInfoHotspot(hotspot) && normalizeInfoHotspotDisplayMode(hotspot.displayMode) === 'quick';
 }
 
 function getSceneLinkHotspots(scene = getSelectedScene()) {
@@ -4924,6 +4940,65 @@ function getSceneLinkDisplayName(hotspot, targetScene = null) {
   return targetScene?.name || targetScene?.id || 'Unassigned target';
 }
 
+function clearQuickPreviewTimers() {
+  if (quickPreviewOpenTimer) {
+    clearTimeout(quickPreviewOpenTimer);
+    quickPreviewOpenTimer = null;
+  }
+  if (quickPreviewCloseTimer) {
+    clearTimeout(quickPreviewCloseTimer);
+    quickPreviewCloseTimer = null;
+  }
+}
+
+function cancelQuickPreviewClose() {
+  if (quickPreviewCloseTimer) {
+    clearTimeout(quickPreviewCloseTimer);
+    quickPreviewCloseTimer = null;
+  }
+}
+
+function scheduleQuickPreviewClose() {
+  cancelQuickPreviewClose();
+  quickPreviewCloseTimer = setTimeout(() => {
+    quickPreviewCloseTimer = null;
+    if (!quickPreviewHoverMarkerId && !quickPreviewHoverModal && quickPreviewOpenHotspotId) {
+      closeHotspotPreview();
+    }
+  }, 120);
+}
+
+function maybeOpenQuickInfoPreview(hotspotId) {
+  const scene = getSelectedScene();
+  const hotspot = scene?.hotspots?.find((item) => item.id === hotspotId) || null;
+  if (
+    !hotspot ||
+    !isQuickInfoHotspot(hotspot) ||
+    placementMode ||
+    isInfoHotspotInteractionModeActive() ||
+    homePageEditMode ||
+    richEditorModal?.classList.contains('visible')
+  ) {
+    return;
+  }
+  cancelQuickPreviewClose();
+  if (quickPreviewOpenHotspotId === hotspotId && previewModal?.classList.contains('visible')) {
+    return;
+  }
+  if (quickPreviewOpenTimer) {
+    clearTimeout(quickPreviewOpenTimer);
+  }
+  quickPreviewOpenTimer = setTimeout(() => {
+    quickPreviewOpenTimer = null;
+    const currentScene = getSelectedScene();
+    const currentHotspot = currentScene?.hotspots?.find((item) => item.id === hotspotId) || null;
+    if (!currentHotspot || !isQuickInfoHotspot(currentHotspot) || quickPreviewHoverMarkerId !== hotspotId) {
+      return;
+    }
+    openHotspotPreview(hotspotId);
+  }, 120);
+}
+
 function openHotspotPreviewOrFollowLink(hotspotId) {
   const scene = getSelectedScene();
   const hotspot = scene?.hotspots?.find((item) => item.id === hotspotId) || null;
@@ -5093,6 +5168,16 @@ function buildHotspotMarkerElement(hotspotId) {
   marker.className = 'hotspot-marker';
   marker.dataset.hotspotId = hotspotId;
   marker.addEventListener('pointerdown', (event) => startMarkerDrag(event, hotspotId));
+  marker.addEventListener('mouseenter', () => {
+    quickPreviewHoverMarkerId = hotspotId;
+    maybeOpenQuickInfoPreview(hotspotId);
+  });
+  marker.addEventListener('mouseleave', () => {
+    if (quickPreviewHoverMarkerId === hotspotId) {
+      quickPreviewHoverMarkerId = null;
+    }
+    scheduleQuickPreviewClose();
+  });
   hotspotOverlay.appendChild(marker);
   hotspotMarkerElements.set(hotspotId, marker);
   return marker;
@@ -5272,6 +5357,7 @@ function openHotspotPreview(hotspotId) {
   const scene = getSelectedScene();
   const hotspot = scene?.hotspots.find((h) => h.id === hotspotId) || null;
   if (!hotspot || !previewModal) return;
+  quickPreviewOpenHotspotId = isQuickInfoHotspot(hotspot) ? hotspot.id : null;
   previewHotspotContext = null;
   btnHomePagePreviewStart?.classList.add('hidden');
 
@@ -5407,6 +5493,10 @@ function openHotspotPreview(hotspotId) {
 
 function closeHotspotPreview() {
   if (!previewModal) return;
+  clearQuickPreviewTimers();
+  quickPreviewHoverMarkerId = null;
+  quickPreviewHoverModal = false;
+  quickPreviewOpenHotspotId = null;
   stopPreviewModalDrag();
   previewHotspotContext = null;
   btnHomePagePreviewStart?.classList.add('hidden');
@@ -5632,6 +5722,7 @@ function setInfoHotspotCreateMode(nextMode, { silent = false } = {}) {
     closeHotspotPreview();
   }
   updateInfoHotspotModeButtons();
+  renderInfoHotspotList();
   renderContentBlocks();
   if (!silent) {
     updateStatus(
@@ -5662,7 +5753,6 @@ function setInfoHotspotEditMode(nextMode, { silent = false } = {}) {
     infoHotspotEditMode = true;
     hideHotspotHoverCard();
     closeHotspotPreview();
-    openRichEditorModal(hotspot);
   } else {
     infoHotspotEditMode = false;
     if (richEditorModal?.classList.contains('visible')) {
@@ -5670,6 +5760,7 @@ function setInfoHotspotEditMode(nextMode, { silent = false } = {}) {
     }
   }
   updateInfoHotspotModeButtons();
+  renderInfoHotspotList();
   renderContentBlocks();
   if (!silent) {
     updateStatus(
@@ -5898,6 +5989,12 @@ function renderInfoHotspotList() {
       selectedInfo ? getInfoHotspotColorKey(selectedInfo) : DEFAULT_INFO_HOTSPOT_COLOR_KEY
     );
     infoHotspotColorSelect.disabled = !selectedInfo || !isInfoHotspotInteractionModeActive();
+  }
+  if (infoHotspotModeSelect) {
+    infoHotspotModeSelect.value = selectedInfo
+      ? normalizeInfoHotspotDisplayMode(selectedInfo.displayMode)
+      : DEFAULT_INFO_HOTSPOT_DISPLAY_MODE;
+    infoHotspotModeSelect.disabled = !selectedInfo || !isInfoHotspotInteractionModeActive();
   }
   if (btnAddHotspot) btnAddHotspot.disabled = false;
   if (btnDeleteHotspot) btnDeleteHotspot.disabled = !selectedInfo;
@@ -6238,7 +6335,7 @@ function renderContentBlocks() {
   if (richContentHint) {
     richContentHint.textContent = editingHomePage
       ? 'Edit the welcome page shown before the tour starts.'
-      : 'Use one rich content editor per info hotspot. Mix text, image, and video inline.';
+      : 'Use one rich content editor per info hotspot. Type: Normal = click open. Quick = hover on desktop, tap on touch.';
   }
   if (!infoContentEnabled) {
     return;
@@ -6788,6 +6885,7 @@ function renderContentBlocks() {
     }
     state.selectedHotspotId = hotspot.id;
     setInfoHotspotEditMode(true);
+    openRichEditorModal(hotspot, { type: 'info-hotspot' });
     renderContentBlocks();
   });
 
@@ -7546,6 +7644,7 @@ function createInfoHotspotAt(coords = null) {
   const hotspot = createHotspotRecord(`Info ${String(infoCount).padStart(2, '0')}`, [], {
     richContentHtml: '',
     markerColorKey: DEFAULT_INFO_HOTSPOT_COLOR_KEY,
+    displayMode: DEFAULT_INFO_HOTSPOT_DISPLAY_MODE,
     infoFrameSize: {
       width: DEFAULT_INFO_FRAME_WIDTH,
       height: DEFAULT_INFO_FRAME_HEIGHT
@@ -9702,6 +9801,25 @@ infoHotspotColorSelect?.addEventListener('change', (event) => {
   autosave();
 });
 
+infoHotspotModeSelect?.addEventListener('change', (event) => {
+  const hotspot = getSelectedInfoHotspot();
+  if (!hotspot) {
+    renderInfoHotspotList();
+    return;
+  }
+  if (!isInfoHotspotInteractionModeActive()) {
+    renderInfoHotspotList();
+    updateStatus('Enable New or Edit to change info hotspot mode.');
+    return;
+  }
+  hotspot.displayMode = normalizeInfoHotspotDisplayMode(event.target.value || DEFAULT_INFO_HOTSPOT_DISPLAY_MODE);
+  if (previewHotspotContext?.hotspotId === hotspot.id && !isQuickInfoHotspot(hotspot)) {
+    quickPreviewOpenHotspotId = null;
+  }
+  renderInfoHotspotList();
+  autosave();
+});
+
 linkSelect.addEventListener('change', (event) => {
   const hotspotId = event.target.value;
   if (!hotspotId) return;
@@ -9812,6 +9930,18 @@ btnCancelTiles.addEventListener('click', () => {
 });
 btnClosePreview.addEventListener('click', closeHotspotPreview);
 btnHomePagePreviewStart?.addEventListener('click', startTourFromHomePagePreview);
+previewModalContent?.addEventListener('mouseenter', () => {
+  if (quickPreviewOpenHotspotId) {
+    quickPreviewHoverModal = true;
+    cancelQuickPreviewClose();
+  }
+});
+previewModalContent?.addEventListener('mouseleave', () => {
+  if (quickPreviewOpenHotspotId) {
+    quickPreviewHoverModal = false;
+    scheduleQuickPreviewClose();
+  }
+});
 previewModalContent?.addEventListener('pointerdown', (event) => {
   maybeStartPreviewModalDrag(event);
 });
