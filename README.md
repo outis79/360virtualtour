@@ -44,6 +44,7 @@ The project is operational and currently includes:
 - scene-link label uses target scene alias (fallback: scene name)
 - cross-group duplicate upload modal (`Proceed`, `Accept All`, `Skip`, `Skip All`, `List`, `Cancel`)
 - viewer with groups, floorplan, hotspot modal, gyro toggle, and basic VR/Cardboard mode
+- exported viewer opens without static placeholder text inside the panorama area
 
 ## Editor/Viewer Synchronization
 Verified synchronization points between `editor` and `viewer`:
