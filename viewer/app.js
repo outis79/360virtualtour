@@ -16,6 +16,7 @@ const fallbackProject = {
 };
 
 const panoElement = document.getElementById('pano');
+const viewerShell = document.querySelector('.viewer-shell');
 const viewerHeader = document.querySelector('.viewer-header');
 const licenseFooter = document.querySelector('.license-footer');
 const panoLeft = document.getElementById('pano-left');
@@ -37,6 +38,7 @@ const btnMobileMap = document.getElementById('btn-mobile-map');
 const btnMobilePanelClose = document.getElementById('btn-mobile-panel-close');
 const mobilePanelTitle = document.getElementById('mobile-panel-title');
 const mobilePanelBackdrop = document.getElementById('mobile-panel-backdrop');
+const orientationLockOverlay = document.getElementById('orientation-lock-overlay');
 const homePageOverlay = document.getElementById('home-page-overlay');
 const homePageFrame = document.getElementById('home-page-frame');
 const homePageBody = document.getElementById('home-page-body');
@@ -47,6 +49,8 @@ const modalTitle = document.getElementById('modal-title');
 const modalBody = document.getElementById('modal-body');
 const sceneLinkTooltip = document.getElementById('scene-link-tooltip');
 const btnHomeToggle = document.getElementById('btn-home-toggle');
+const btnFullscreen = document.getElementById('btn-fullscreen');
+const btnFullscreenExit = document.getElementById('btn-fullscreen-exit');
 const btnGyro = document.getElementById('btn-gyro');
 const btnReset = document.getElementById('btn-reset-orientation');
 const btnVr = document.getElementById('btn-vr');
@@ -77,6 +81,7 @@ let quickInfoHoverTimer = null;
 let quickInfoCloseTimer = null;
 let quickInfoModalHover = false;
 let mobilePanelMode = null;
+let orientationLocked = false;
 
 const FLOORPLAN_COLOR_MAP = {
   yellow: '#f0c84b',
@@ -117,6 +122,30 @@ function isMobileViewerLayout() {
   return typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 900px)').matches;
 }
 
+function isPortraitLockedMobileLayout() {
+  return isMobileViewerLayout() && window.innerHeight > window.innerWidth;
+}
+
+function updateOrientationLockUi() {
+  orientationLocked = isPortraitLockedMobileLayout();
+  orientationLockOverlay?.classList.toggle('hidden', !orientationLocked);
+  orientationLockOverlay?.setAttribute('aria-hidden', orientationLocked ? 'false' : 'true');
+  document.body.classList.toggle('orientation-locked', orientationLocked);
+  if (orientationLocked) {
+    closeMobilePanel();
+    hideSceneLinkTooltip();
+    if (modal?.classList.contains('visible')) {
+      closeModal();
+    }
+  }
+}
+
+function updateFullscreenUiState() {
+  const isFullscreen = isFullscreenActive();
+  document.body.classList.toggle('viewer-fullscreen', isFullscreen);
+  btnFullscreenExit?.classList.toggle('hidden', !isFullscreen);
+}
+
 function syncViewerViewportMetrics() {
   const viewportHeight = Math.max(320, Math.round(window.innerHeight || document.documentElement.clientHeight || 0));
   document.documentElement.style.setProperty('--viewer-app-height', `${viewportHeight}px`);
@@ -130,6 +159,8 @@ function syncViewerViewportMetrics() {
 
 function refreshViewerLayout() {
   syncViewerViewportMetrics();
+  updateOrientationLockUi();
+  if (orientationLocked) return;
   const rect = panoElement?.getBoundingClientRect();
   const width = Math.max(1, Math.round(rect?.width || panoElement?.clientWidth || 0));
   const height = Math.max(1, Math.round(rect?.height || panoElement?.clientHeight || 0));
@@ -1487,6 +1518,7 @@ function buildViewer(project) {
     }
   });
   activeViewer = viewer;
+  syncFullscreenButton(project);
   floorplansByGroup = new Map();
   floorplanZoomByGroup = new Map();
   (project.minimap?.floorplans || []).forEach((floorplan) => {
@@ -1880,21 +1912,101 @@ function updateMobilePanelUi() {
 function closeMobilePanel() {
   mobilePanelMode = null;
   updateMobilePanelUi();
-  requestAnimationFrame(refreshViewerLayout);
+  if (!orientationLocked) {
+    requestAnimationFrame(refreshViewerLayout);
+  }
 }
 
 function openMobilePanel(mode) {
-  if (!isMobileViewerLayout()) return;
+  if (!isMobileViewerLayout() || orientationLocked) return;
   mobilePanelMode = mode === 'map' ? 'map' : 'scenes';
   updateMobilePanelUi();
   requestAnimationFrame(refreshViewerLayout);
 }
 
 function toggleMobilePanel(mode) {
-  if (!isMobileViewerLayout()) return;
+  if (!isMobileViewerLayout() || orientationLocked) return;
   mobilePanelMode = mobilePanelMode === mode ? null : mode;
   updateMobilePanelUi();
   requestAnimationFrame(refreshViewerLayout);
+}
+
+function canUseFullscreen() {
+  const docEl = document.documentElement;
+  return Boolean(
+    window.screenfull?.isEnabled ||
+    document.fullscreenEnabled ||
+    document.webkitFullscreenEnabled ||
+    docEl?.requestFullscreen ||
+    docEl?.webkitRequestFullscreen
+  );
+}
+
+function isFullscreenActive() {
+  return Boolean(
+    window.screenfull?.isFullscreen ||
+    document.fullscreenElement ||
+    document.webkitFullscreenElement
+  );
+}
+
+function requestFullscreenFallback() {
+  const candidates = [document.documentElement, document.body, viewerShell, panoElement];
+  for (const node of candidates) {
+    if (node?.requestFullscreen) {
+      return node.requestFullscreen();
+    }
+    if (node?.webkitRequestFullscreen) {
+      return node.webkitRequestFullscreen();
+    }
+  }
+  return null;
+}
+
+function exitFullscreenFallback() {
+  if (document.exitFullscreen) {
+    return document.exitFullscreen();
+  }
+  if (document.webkitExitFullscreen) {
+    return document.webkitExitFullscreen();
+  }
+  return null;
+}
+
+function syncFullscreenButton(project = projectData) {
+  if (!btnFullscreen) return;
+  const enabledBySettings = project?.settings?.fullscreenButton !== false;
+  const supported = canUseFullscreen();
+  btnFullscreen.hidden = !enabledBySettings;
+  btnFullscreen.disabled = !enabledBySettings || !supported;
+  if (!enabledBySettings) return;
+  const isFullscreen = isFullscreenActive();
+  btnFullscreen.textContent = isFullscreen ? 'Exit Fullscreen' : 'Fullscreen';
+  btnFullscreen.setAttribute('aria-pressed', isFullscreen ? 'true' : 'false');
+  updateFullscreenUiState();
+}
+
+function toggleFullscreen() {
+  if (!canUseFullscreen()) {
+    openModal({
+      title: 'Fullscreen',
+      contentBlocks: [
+        { type: 'text', value: 'Fullscreen is not available in this mobile browser. Try Chrome or open the tour outside the in-app browser.' }
+      ]
+    });
+    return;
+  }
+  let result = null;
+  if (window.screenfull?.isEnabled) {
+    result = screenfull.toggle(document.documentElement);
+  } else if (isFullscreenActive()) {
+    result = exitFullscreenFallback();
+  } else {
+    result = requestFullscreenFallback();
+  }
+  if (result && typeof result.catch === 'function') {
+    result.catch(() => {});
+  }
 }
 
 function setFloorplanExpanded(next) {
@@ -2243,6 +2355,8 @@ fetch(sampleTourUrl)
 btnGyro.addEventListener('click', toggleGyro);
 btnReset.addEventListener('click', resetOrientation);
 btnVr.addEventListener('click', enterVr);
+btnFullscreen?.addEventListener('click', toggleFullscreen);
+btnFullscreenExit?.addEventListener('click', toggleFullscreen);
 btnFloorplanZoomOut?.addEventListener('click', () => {
   setActiveFloorplanZoom(getActiveFloorplanZoom() - 0.1);
 });
@@ -2287,8 +2401,22 @@ modalContent?.addEventListener('mouseleave', () => {
 });
 btnHomePageStart?.addEventListener('click', startTourFromHomePage);
 btnHomeToggle?.addEventListener('click', toggleHomePageOverlay);
+window.screenfull?.on?.('change', () => {
+  syncFullscreenButton(projectData);
+  requestAnimationFrame(refreshViewerLayout);
+});
+document.addEventListener('fullscreenchange', () => {
+  syncFullscreenButton(projectData);
+  requestAnimationFrame(refreshViewerLayout);
+});
+document.addEventListener('webkitfullscreenchange', () => {
+  syncFullscreenButton(projectData);
+  requestAnimationFrame(refreshViewerLayout);
+});
 updateFloorplanExpandButton();
 updateMobilePanelUi();
+syncFullscreenButton(projectData);
+updateFullscreenUiState();
 refreshViewerLayout();
 window.addEventListener('resize', () => {
   if (!isMobileViewerLayout()) {

@@ -14,6 +14,7 @@
       <button class="btn ghost mobile-only" id="btn-mobile-scenes">Scenes</button>
       <button class="btn ghost mobile-only" id="btn-mobile-map">Map</button>
       <button class="btn ghost" id="btn-home-toggle">Home</button>
+      <button class="btn ghost" id="btn-fullscreen">Fullscreen</button>
       <button class="btn ghost" id="btn-gyro">Enable Gyro</button>
       <button class="btn ghost" id="btn-reset-orientation">Reset Orientation</button>
       <button class="btn ghost" id="btn-vr">Enter VR</button>
@@ -22,6 +23,7 @@
 
   <main class="viewer-shell">
     <div class="pano">
+      <button class="btn ghost fullscreen-exit hidden" id="btn-fullscreen-exit" aria-label="Exit fullscreen">Exit</button>
       <div id="pano" class="pano-single">
       </div>
       <div id="scene-link-tooltip" class="scene-link-tooltip hidden" aria-hidden="true"></div>
@@ -75,6 +77,12 @@
   </main>
 
   <div class="mobile-panel-backdrop hidden" id="mobile-panel-backdrop" aria-hidden="true"></div>
+  <div class="orientation-lock-overlay hidden" id="orientation-lock-overlay" aria-hidden="true">
+    <div class="orientation-lock-card">
+      <div class="orientation-lock-title">Landscape Required</div>
+      <div class="orientation-lock-text">Rotate your device to landscape to view the tour.</div>
+    </div>
+  </div>
 
   <footer class="license-footer">
     Powered by Marzipano (Apache-2.0), JSZip (MIT), Bowser (MIT), Screenfull (MIT), Reset CSS (Public Domain).
