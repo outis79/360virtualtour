@@ -36,6 +36,10 @@ body {
   font-weight: 600;
 }
 
+.mobile-group-list-section {
+  display: none;
+}
+
 .actions {
   display: flex;
   gap: 8px;
@@ -812,17 +816,13 @@ body.viewer-fullscreen .viewer-shell {
   .mobile-panel-head {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-end;
     gap: 12px;
-    margin-bottom: 10px;
+    margin-bottom: 6px;
   }
 
   .mobile-panel-title {
-    font-size: 13px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--muted);
+    display: none;
   }
 
   .mobile-panel-close {
@@ -833,24 +833,54 @@ body.viewer-fullscreen .viewer-shell {
     display: none;
   }
 
-  body.mobile-panel-scenes .side-panel .panel-section:nth-of-type(1),
-  body.mobile-panel-scenes .side-panel .panel-section:nth-of-type(2) {
+  body.mobile-panel-groups .side-panel .mobile-group-list-section {
+    display: block;
+  }
+
+  body.mobile-panel-scenes .side-panel .scene-list-section {
     display: block;
   }
 
   body.mobile-panel-map .side-panel .panel-section.floorplan-panel {
     display: block;
+    margin-top: 0;
   }
 
   body.mobile-panel-map .side-panel .panel-section.floorplan-panel .floorplan-wrap {
-    min-height: 260px;
+    min-height: calc(var(--viewer-app-height, 100vh) - var(--viewer-header-height, 56px) - 96px);
+    max-height: calc(var(--viewer-app-height, 100vh) - var(--viewer-header-height, 56px) - 96px);
+  }
+
+  body.mobile-panel-groups .side-panel,
+  body.mobile-panel-scenes .side-panel,
+  body.mobile-panel-map .side-panel {
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    max-height: none;
+    border-radius: 0;
+    padding: 12px;
+    z-index: 55;
+  }
+
+  body.mobile-panel-map .mobile-panel-head {
+    margin-bottom: 8px;
+  }
+
+  body.mobile-panel-map .side-panel .floorplan-tools {
+    flex-wrap: wrap;
   }
 
   .mobile-panel-backdrop {
     position: fixed;
     inset: 0;
-    z-index: 40;
+    z-index: 54;
     background: rgba(5, 7, 10, 0.45);
+  }
+
+  body.mobile-panel-open .side-panel .section-title {
+    display: none;
   }
 
   .mobile-panel-backdrop.hidden {

@@ -23,6 +23,7 @@ const panoLeft = document.getElementById('pano-left');
 const panoRight = document.getElementById('pano-right');
 const sceneList = document.getElementById('scene-list');
 const groupSelect = document.getElementById('group-select');
+const groupListMobile = document.getElementById('group-list-mobile');
 const floorplanStage = document.getElementById('floorplan-stage');
 const floorplanImage = document.getElementById('floorplan-image');
 const floorplanMarkers = document.getElementById('floorplan-markers');
@@ -33,6 +34,7 @@ const btnFloorplanZoomIn = document.getElementById('btn-floorplan-zoom-in');
 const btnFloorplanZoomReset = document.getElementById('btn-floorplan-zoom-reset');
 const btnFloorplanExpand = document.getElementById('btn-floorplan-expand');
 const floorplanZoomValue = document.getElementById('floorplan-zoom-value');
+const btnMobileGroups = document.getElementById('btn-mobile-groups');
 const btnMobileScenes = document.getElementById('btn-mobile-scenes');
 const btnMobileMap = document.getElementById('btn-mobile-map');
 const btnMobilePanelClose = document.getElementById('btn-mobile-panel-close');
@@ -1809,19 +1811,31 @@ function createHotspotElement(hotspot) {
 }
 
 function renderGroupList() {
-  if (!groupSelect) return;
+  if (groupSelect) {
+    groupSelect.innerHTML = '';
+    (projectData?.groups || []).forEach((group) => {
+      const option = document.createElement('option');
+      option.value = group.id;
+      option.textContent = group.name || 'Group';
+      groupSelect.appendChild(option);
+    });
+  }
 
-  groupSelect.innerHTML = '';
-  (projectData?.groups || []).forEach((group) => {
-    const option = document.createElement('option');
-    option.value = group.id;
-    option.textContent = group.name || 'Group';
-    groupSelect.appendChild(option);
-  });
+  if (groupListMobile) {
+    groupListMobile.innerHTML = '';
+    (projectData?.groups || []).forEach((group) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = group.name || 'Group';
+      button.classList.toggle('active', activeGroupId === group.id);
+      button.addEventListener('click', () => handleGroupSelectionChange(group.id));
+      groupListMobile.appendChild(button);
+    });
+  }
 
-  if (activeGroupId && groupSelect.querySelector(`option[value="${activeGroupId}"]`)) {
+  if (groupSelect && activeGroupId && groupSelect.querySelector(`option[value="${activeGroupId}"]`)) {
     groupSelect.value = activeGroupId;
-  } else if (groupSelect.options.length) {
+  } else if (groupSelect?.options.length) {
     activeGroupId = groupSelect.options[0].value;
     groupSelect.value = activeGroupId;
   }
@@ -1892,12 +1906,21 @@ function updateFloorplanExpandButton() {
 function updateMobilePanelUi() {
   const isOpen = Boolean(mobilePanelMode);
   document.body.classList.toggle('mobile-panel-open', isOpen);
+  document.body.classList.toggle('mobile-panel-groups', mobilePanelMode === 'groups');
   document.body.classList.toggle('mobile-panel-scenes', mobilePanelMode === 'scenes');
   document.body.classList.toggle('mobile-panel-map', mobilePanelMode === 'map');
   mobilePanelBackdrop?.classList.toggle('hidden', !isOpen);
   mobilePanelBackdrop?.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
   if (mobilePanelTitle) {
-    mobilePanelTitle.textContent = mobilePanelMode === 'map' ? 'Map' : 'Scenes';
+    mobilePanelTitle.textContent = mobilePanelMode === 'groups'
+      ? 'Groups'
+      : mobilePanelMode === 'map'
+        ? 'Map'
+        : 'Scenes';
+  }
+  if (btnMobileGroups) {
+    btnMobileGroups.classList.toggle('active', mobilePanelMode === 'groups');
+    btnMobileGroups.setAttribute('aria-pressed', mobilePanelMode === 'groups' ? 'true' : 'false');
   }
   if (btnMobileScenes) {
     btnMobileScenes.classList.toggle('active', mobilePanelMode === 'scenes');
@@ -1919,7 +1942,7 @@ function closeMobilePanel() {
 
 function openMobilePanel(mode) {
   if (!isMobileViewerLayout() || orientationLocked) return;
-  mobilePanelMode = mode === 'map' ? 'map' : 'scenes';
+  mobilePanelMode = mode === 'map' ? 'map' : mode === 'groups' ? 'groups' : 'scenes';
   updateMobilePanelUi();
   requestAnimationFrame(refreshViewerLayout);
 }
@@ -2137,6 +2160,7 @@ function renderSceneList() {
 
   visibleScenes.forEach((scene) => {
     const button = document.createElement('button');
+    button.type = 'button';
     button.textContent = String(scene.data.alias || '').trim() || scene.data.name;
     button.classList.toggle('active', currentScene?.data?.id === scene.data.id);
     button.addEventListener('click', () => switchScene(scene));
@@ -2161,6 +2185,7 @@ function switchScene(scene, options = {}) {
     if (groupSelect) {
       groupSelect.value = activeGroupId;
     }
+    renderGroupList();
     renderFloorplan();
   }
 
@@ -2367,13 +2392,18 @@ btnFloorplanZoomReset?.addEventListener('click', () => {
   setActiveFloorplanZoom(1);
 });
 btnFloorplanExpand?.addEventListener('click', toggleFloorplanExpanded);
+btnMobileGroups?.addEventListener('click', () => toggleMobilePanel('groups'));
 btnMobileScenes?.addEventListener('click', () => toggleMobilePanel('scenes'));
 btnMobileMap?.addEventListener('click', () => toggleMobilePanel('map'));
 btnMobilePanelClose?.addEventListener('click', closeMobilePanel);
 mobilePanelBackdrop?.addEventListener('click', closeMobilePanel);
-groupSelect?.addEventListener('change', () => {
-  activeGroupId = groupSelect.value;
+function handleGroupSelectionChange(nextGroupId) {
+  activeGroupId = nextGroupId;
+  if (groupSelect) {
+    groupSelect.value = activeGroupId;
+  }
   renderFloorplan();
+  renderGroupList();
   const firstSceneInGroup = getPreferredSceneForGroup(activeGroupId);
   if (firstSceneInGroup) {
     switchScene(firstSceneInGroup, { syncGroup: false });
@@ -2381,7 +2411,9 @@ groupSelect?.addEventListener('change', () => {
     currentScene = null;
     renderSceneList();
   }
-});
+}
+
+groupSelect?.addEventListener('change', () => handleGroupSelectionChange(groupSelect.value));
 
 document.getElementById('btn-close-modal').addEventListener('click', closeModal);
 modalContent?.addEventListener('pointerdown', (event) => {

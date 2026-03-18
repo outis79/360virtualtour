@@ -11,6 +11,7 @@
   <header class="viewer-header">
     <div class="title">Iterpano Viewer</div>
     <div class="actions">
+      <button class="btn ghost mobile-only" id="btn-mobile-groups">Group</button>
       <button class="btn ghost mobile-only" id="btn-mobile-scenes">Scenes</button>
       <button class="btn ghost mobile-only" id="btn-mobile-map">Map</button>
       <button class="btn ghost" id="btn-home-toggle">Home</button>
@@ -46,12 +47,17 @@
         <div class="mobile-panel-title" id="mobile-panel-title">Scenes</div>
         <button class="btn ghost mobile-panel-close" id="btn-mobile-panel-close" aria-label="Close panel">Close</button>
       </div>
-      <div class="panel-section">
+      <div class="panel-section group-select-section">
         <div class="section-title">Groups</div>
         <select id="group-select" class="field-select" aria-label="Scene groups"></select>
       </div>
 
-      <div class="panel-section">
+      <div class="panel-section mobile-group-list-section">
+        <div class="section-title">Groups</div>
+        <div class="scene-list" id="group-list-mobile"></div>
+      </div>
+
+      <div class="panel-section scene-list-section">
         <div class="section-title">Scenes</div>
         <div class="scene-list" id="scene-list"></div>
       </div>
